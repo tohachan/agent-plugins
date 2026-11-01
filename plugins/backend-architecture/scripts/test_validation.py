@@ -6,7 +6,7 @@ import unittest
 from validate_report import load_report, validate, ROOT
 
 class ReportContractTests(unittest.TestCase):
-    def setUp(self): self.report = load_report(ROOT/'shared/output-format.md')
+    def setUp(self): self.report = load_report(ROOT/'shared/report.md')
     def test_documented_example(self): self.assertEqual(validate(self.report), [])
     def test_false_overall_is_rejected(self):
         self.report['overall']['score'] = 9

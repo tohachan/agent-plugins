@@ -1,50 +1,54 @@
 # backend-architecture
 
-Audit existing backends and design new ones with evidence-calibrated rules, critical-flow verification and one shared scored report format. Version 0.3.0 keeps all existing rule IDs and adds coverage discipline: a mandatory coverage inventory (every entry point, authorization declaration, domain module, store and documented obligation has exactly one owner pass and a terminal status), two-axis coverage (cross-cutting areas × the target's own domain modules), a domain pass whose invariants come from the target's specs rather than from the skill, a coverage gate with independent re-verification before judging, conditional severity, and an explicit index recommendation (for example a graphify code graph) whenever enumeration was incomplete.
+Audit existing backends and design new ones with evidence-calibrated rules, critical-flow verification, a mandatory coverage inventory and one shared scored report format.
 
-## Skills
+## Skills and agents
 
 | Skill | Use it for | Example |
 | --- | --- | --- |
-| `backend-audit` | Reviewing code, a repo, infra/config, or an architecture doc. One area, several, or all. | `/backend-audit all ./services/orders` · "проверь конкурентность и идемпотентность в этом репо" |
-| `backend-design` | Designing a system, service or feature, or applying a pattern to your system. | `/backend-design notification service, 5M users` · "как сделать идемпотентные вебхуки?" |
+| `backend-rules` | Checking code or a question against one area's rules, without a report. Loads only that area. | "сверься с правилами идемпотентности в charge.go" · `/backend-rules IDEM-BP-13` |
+| `backend-audit` | Reviewing code, a repo, infra/config or an architecture doc: one area, several, or all. | `/backend-audit all ./services/orders` · "проверь конкурентность и идемпотентность" |
+| `backend-design` | Designing a system, service or feature, or applying a pattern. | `/backend-design notification service, 5M users` · "как сделать идемпотентные вебхуки?" |
+
+A full audit follows `shared/full-audit.md`: fixed passes (inventory → critical flows → four area-group passes → domain passes → coverage gate → report), a work file that holds the inventory and ledger across context compaction, and — when the Agent tool is available — parallel `backend-reviewer` agents per pass plus `backend-verifier` agents that independently try to refute every High/Critical candidate and critical strength. Without subagents the same passes run sequentially, each persisted before the next.
 
 ## Areas (13)
 
-API design · Data storage & transactions · Caching · Queues & messaging · Concurrency · Idempotency & consistency · Resilience · Scalability · Performance · Security · Observability · Architecture styles & boundaries · Delivery & operations.
+API · DATA · CACHE · MSG · CONC · IDEM · RES · SCALE · PERF · SEC · OBS · ARCH · OPS. Each is `knowledge/<prefix>/` with `decisions.md` (key decisions, for design), `checks.md` (audit checklist, for audit) and `rules.md` (`XX-BP/BAD/AP-n` bodies, looked up by ID). Reports cite the IDs. Index and aliases: `knowledge/README.md`.
 
-Each area is one file in `knowledge/` with the same sections: key decisions, best practices (`XX-BP-n`), bad practices (`XX-BAD-n`), anti-patterns (`XX-AP-n`), audit checklist (`XX-CHK-n`), Go/Node.js notes. Reports cite these IDs. Index and aliases: `knowledge/README.md`.
+## Token budget
+
+Reading is by need, not by file: design reads `decisions.md`, audit reads `checks.md`, and rule bodies are fetched by Grep on their ID. Approximate knowledge + method bytes loaded (≈ 4 bytes per token):
+
+| Task | 0.3.0 | 0.4.0 |
+| --- | --- | --- |
+| One-area lookup (`backend-rules`, IDEM) | n/a — only a focused audit, ≈ 70 KB | ≈ 27 KB (README + `idem/rules.md`), no report |
+| Focused audit, one area (IDEM) | ≈ 70 KB | ≈ 38 KB + looked-up rules |
+| Full audit, single agent | ≈ 424 KB | ≈ 143 KB + looked-up rules |
+| Full audit, lead with subagents | ≈ 424 KB in one context | ≈ 34 KB lead; each pass ≈ 32–44 KB in its own context |
+| System design, ~8 areas | ≈ 39 KB + whole area files (≈ 30 KB each) | ≈ 31 KB + `decisions.md` (≈ 4 KB each) |
+
+Shared method and report contract shrank only modestly (≈ 39 KB → 34 KB with the skill); the savings come from not loading rule bodies wholesale. Rule text itself is unchanged, so eval-tuned behavior is preserved.
 
 ## Output
 
-Both skills follow `shared/output-format.md`:
-
-- header table (mode, target, areas, date, overall score, confidence);
-- scorecard: each area assessed, partial, unverified or not applicable, with a numeric score only when defensible; the shared format is the single source for scoring and caps;
-- coverage: unit counts by kind (checked / sampled / not covered, with owner passes), domain modules, domain invariants with their sources, gaps and the index recommendation;
-- items in one schema — audit findings `F-n`, design residual risks `R-n` — with severity, rule IDs, evidence, impact, fix, effort;
-- design decisions `D-n` with options, trade-offs and revisit triggers;
-- plan, validation/acceptance criteria, open questions, and a closing JSON summary with revision, scope and coverage for qualified comparisons over time.
-
-Header, scorecard and JSON remain mandatory even for focused questions. Compact reports reduce prose and unrelated checks, not the reporting contract. JSON schema 2.1 keeps every 2.0 field and adds the mandatory `coverage_inventory`, optional conditional severity and prior-report reconciliation; the validator rejects 2.0 reports, which must be regenerated. Consumers must recognize the version and null-score semantics. In particular, do not compare a proposed design score with implemented production readiness or treat an unverified score as zero.
+Both report-producing skills follow `shared/report.md`: header, scorecard (assessed / partial / unverified / not applicable, numeric only when defensible), coverage (unit counts, domain modules, invariants with sources, gaps, index recommendation), F-n/R-n items, D-n decisions, plan, validation, open questions and a closing JSON summary (schema 2.1). Compact reports reduce prose, not the contract. Do not compare a design score with implemented readiness or treat an unverified score as zero.
 
 ## Layout
 
 ```
 .claude-plugin/plugin.json
-knowledge/            README.md, 13 area files, sources.md, _TEMPLATE.md
-shared/               assessment-method.md + output-format.md
-scripts/              report/repository validators and contract tests
-evals/README.md        comparative behavioral evaluation protocol
-skills/backend-audit/SKILL.md   (+ evals/)
-skills/backend-design/SKILL.md  (+ evals/)
+agents/               backend-reviewer.md, backend-verifier.md (full-audit passes)
+knowledge/            README.md, sources.md, _TEMPLATE.md, <prefix>/{decisions,checks,rules}.md × 13
+shared/               method.md (evidence & coverage), full-audit.md (pass protocol), report.md (contract)
+scripts/              report/repository validators and contract tests (Python stdlib only)
+evals/README.md       comparative behavioral evaluation protocol
+skills/backend-{rules,audit,design}/SKILL.md (+ evals/)
 ```
 
-To extend: add a rule to its owning area, cite its applicability and evidence, and reference canonical mechanisms instead of duplicating them. New areas also require index registration and updating the validator's area registry. The source register distinguishes verified facts from references still requiring version checks.
+To extend: add a rule to its owning area's `rules.md` as one line under its ID, cite it from a check in `checks.md` (or list it under "Also scan for"), and reference canonical mechanisms instead of duplicating them. New areas need a directory per `knowledge/_TEMPLATE.md`, an index row and the validator's area registry.
 
 ## Tests
-
-Run deterministic checks (Python standard library only):
 
 ```sh
 python3 -B scripts/validate_repository.py
@@ -52,4 +56,8 @@ python3 -B -m unittest discover -s scripts -p 'test_*.py'
 python3 -B scripts/validate_report.py path/to/report.md --evidence-root path/to/audited/repository
 ```
 
-`skills/*/evals/` retains the Claude plugin eval layout. Use disposable working directories; scaffold scripts write fixture files. Follow [the evaluation protocol](evals/README.md) for same-model baseline/revised comparisons, false-positive scoring and token measurements. Eval material and validators are not loaded as ordinary knowledge. Structural validation does not establish model quality or runtime correctness.
+The scripts use only the Python standard library (no third-party packages, network access or subprocesses); the validator reads files inside `--evidence-root` only. `skills/*/evals/` keeps the Claude plugin eval layout; scaffold scripts copy fixtures into a disposable directory. Follow [the evaluation protocol](evals/README.md) for baseline/revised comparisons and token measurements. Structural validation does not establish model quality.
+
+## Changes in 0.4.0
+
+Rule IDs, rule text, report schema (2.1) and scoring are unchanged. Breaking for anything that references paths: each `knowledge/<area>.md` is split into `knowledge/<prefix>/{decisions,checks,rules}.md`; shared/assessment-method.md → `shared/method.md` (delegation moved to `shared/full-audit.md`); shared/output-format.md → `shared/report.md`. New: `backend-rules` skill, `backend-reviewer` / `backend-verifier` agents, explicit full-audit protocol with a work file.
