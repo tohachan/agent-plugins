@@ -12,6 +12,8 @@ Audit existing backends and design new ones with evidence-calibrated rules, crit
 
 A full audit follows `shared/full-audit.md`: fixed passes (inventory → critical flows → four area-group passes → domain passes → coverage gate → report), a work file that holds the inventory and ledger across context compaction, and — when the Agent tool is available — parallel `backend-reviewer` agents per pass plus `backend-verifier` agents that independently try to refute every High/Critical candidate and critical strength. Without subagents the same passes run sequentially, each persisted before the next.
 
+Models: `backend-audit` (the lead that merges passes and judges) runs on `opus` at `medium` effort for its turn; `backend-reviewer` on `sonnet`/`medium`; `backend-verifier` on `opus`/`medium`, since refuting High/Critical claims is the narrowest and most consequential step. Change them in the frontmatter; a `model` passed on an Agent call would override the agents' setting, so the protocol forbids it.
+
 ## Areas (13)
 
 API · DATA · CACHE · MSG · CONC · IDEM · RES · SCALE · PERF · SEC · OBS · ARCH · OPS. Each is `knowledge/<prefix>/` with `decisions.md` (key decisions, for design), `checks.md` (audit checklist, for audit) and `rules.md` (`XX-BP/BAD/AP-n` bodies, looked up by ID). Reports cite the IDs. Index and aliases: `knowledge/README.md`.
@@ -32,7 +34,7 @@ Shared method and report contract shrank only modestly (≈ 39 KB → 34 KB with
 
 ## Output
 
-Both report-producing skills follow `shared/report.md`: header, scorecard (assessed / partial / unverified / not applicable, numeric only when defensible), coverage (unit counts, domain modules, invariants with sources, gaps, index recommendation), F-n/R-n items, D-n decisions, plan, validation, open questions and a closing JSON summary (schema 2.1). Compact reports reduce prose, not the contract. Do not compare a design score with implemented readiness or treat an unverified score as zero.
+Both report-producing skills follow `shared/report.md`. Tables, findings, decisions and validation are written once, in the closing JSON; `scripts/render_report.py` validates it and renders them into the Markdown at `<!-- render:… -->` markers. Sections: header, scorecard (assessed / partial / unverified / not applicable, numeric only when defensible), coverage (unit counts, domain modules, invariants with sources, gaps, index recommendation), F-n/R-n items, D-n decisions, plan, validation, open questions and a closing JSON summary (schema 2.1). Compact reports reduce prose, not the contract. Do not compare a design score with implemented readiness or treat an unverified score as zero.
 
 ## Layout
 
@@ -41,7 +43,7 @@ Both report-producing skills follow `shared/report.md`: header, scorecard (asses
 agents/               backend-reviewer.md, backend-verifier.md (full-audit passes)
 knowledge/            README.md, sources.md, _TEMPLATE.md, <prefix>/{decisions,checks,rules}.md × 13
 shared/               method.md (evidence & coverage), full-audit.md (pass protocol), report.md (contract)
-scripts/              report/repository validators and contract tests (Python stdlib only)
+scripts/              report renderer, report/repository validators and tests (Python stdlib only)
 evals/README.md       comparative behavioral evaluation protocol
 skills/backend-{rules,audit,design}/SKILL.md (+ evals/)
 ```
@@ -53,11 +55,12 @@ To extend: add a rule to its owning area's `rules.md` as one line under its ID, 
 ```sh
 python3 -B scripts/validate_repository.py
 python3 -B -m unittest discover -s scripts -p 'test_*.py'
-python3 -B scripts/validate_report.py path/to/report.md --evidence-root path/to/audited/repository
+python3 -B scripts/render_report.py path/to/report.md --evidence-root path/to/audited/repository   # validate + render
+python3 -B scripts/validate_report.py path/to/report.md --evidence-root path/to/audited/repository   # validate only
 ```
 
-The scripts use only the Python standard library (no third-party packages, network access or subprocesses); the validator reads files inside `--evidence-root` only. `skills/*/evals/` keeps the Claude plugin eval layout; scaffold scripts copy fixtures into a disposable directory. Follow [the evaluation protocol](evals/README.md) for baseline/revised comparisons and token measurements. Structural validation does not establish model quality.
+The scripts use only the Python standard library (no third-party packages, network access or subprocesses); the validator reads files inside `--evidence-root` only, and the renderer writes only the report file it was given, after validation passes. `skills/*/evals/` keeps the Claude plugin eval layout; scaffold scripts copy fixtures into a disposable directory. Follow [the evaluation protocol](evals/README.md) for baseline/revised comparisons and token measurements. Structural validation does not establish model quality.
 
 ## Changes in 0.4.0
 
-Rule IDs, rule text, report schema (2.1) and scoring are unchanged. Breaking for anything that references paths: each `knowledge/<area>.md` is split into `knowledge/<prefix>/{decisions,checks,rules}.md`; shared/assessment-method.md → `shared/method.md` (delegation moved to `shared/full-audit.md`); shared/output-format.md → `shared/report.md`. New: `backend-rules` skill, `backend-reviewer` / `backend-verifier` agents, explicit full-audit protocol with a work file.
+Rule IDs, rule text, report schema (2.1) and scoring are unchanged. Breaking for anything that references paths: each `knowledge/<area>.md` is split into `knowledge/<prefix>/{decisions,checks,rules}.md`; shared/assessment-method.md → `shared/method.md` (delegation moved to `shared/full-audit.md`); shared/output-format.md → `shared/report.md`. New: `render_report.py` (JSON → Markdown tables and item blocks; items gain `impact`/`fix`, decisions `options`/`why`/`tradeoff`/`revisit`), model/effort settings, `backend-rules` skill, `backend-reviewer` / `backend-verifier` agents, explicit full-audit protocol with a work file.

@@ -44,46 +44,57 @@ Judge by realistic reachability, impact and blast radius, not the rule's default
 
 ## Items and decisions
 
-One root cause per item, ordered by severity. Preserve F-n/R-n IDs of a prior report for recurring issues; never renumber. `fingerprint` = target + logical component/operation + root cause, independent of line numbers and severity.
+One root cause per item. Preserve F-n/R-n IDs of a prior report for recurring issues; never renumber. `fingerprint` = target + logical component/operation + root cause, independent of line numbers and severity. Each item states realistic impact (scenario, violated requirement/invariant, blast radius), a minimal fix, and verification (executed or planned). Design risks (R-n) cite the proposed element and its assumption/failure window. Decisions record options, the choice, why (requirement), trade-off, an observable revisit threshold and rules; link critical ones to validation rows.
 
-```markdown
-### F-1 · <title> — <Severity>
-- **Area:** <primary; also affected> · **Rule:** <IDs> · **Confidence:** confirmed | likely
-- **Evidence:** <file:line/config/doc; observed vs executed; unresolved premise if likely>
-- **Impact:** <scenario, violated requirement/invariant, blast radius>
-- **Fix:** <minimal effective change>
-- **Verification:** <test/inspection and acceptance; executed or planned>
-- **Effort:** S | M | L · **Fingerprint:** <stable key>
-- **Severity if:** <higher> when <trigger> (conditional only)
-```
+## Writing the report: data once, rendered tables
 
-Design risks (R-n) cite the proposed element and its assumption/failure window. Decisions: **D-n · title** — Options · Chosen · Why (requirement) · Trade-off · Revisit when (observable threshold) · Rules; link critical ones to validation rows.
-
-## Report skeleton
+Write every table and item **only in the closing JSON**; never type them in Markdown. Put render markers where they belong and run `python3 scripts/render_report.py <report> [--evidence-root <target>]`. It validates the JSON, then replaces each marker with the rendered block (header, scorecard with Overall row, coverage tables, F-n/R-n blocks ordered by severity, D-n blocks, validation table); re-running is idempotent and nothing is written while validation fails. Fix the JSON, never the rendered text. Without Python, write those blocks by hand in the same shape and state that validation was not run.
 
 ```markdown
 # <Backend audit | Backend design>: <target>
 
-| Mode | Target | Areas | Date | Overall | Confidence |
-| --- | --- | --- | --- | --- | --- |
+<!-- render:header -->
 
-## Summary          — readiness, blockers, critical unknowns, main conclusions, then the score
-## Scorecard        — | Area | Status | Score | Confidence | Crit | High | Med | Low | Coverage / key point |, plus an Overall row with inputs, denominator and cap
-## Coverage         — | Unit kind | Total | Checked | Sampled | Not covered | Owner passes / sampling rule |; domain modules (owner, status); invariants (source, entry points, status); gaps; index recommendation; prior reports reconciled
-## Context          — revision/environment, inspected artifacts, exclusions; audit: system map; design: requirements, arithmetic, assumptions, trust boundaries
-## Architecture     — design: components, ownership, Mermaid diagrams of nontrivial flows and recovery
-## Decisions        — design: D-n blocks
-## Findings / Residual risks — F-n / R-n blocks, or "none established"
-## Strengths        — verified controls or justified mechanisms, each with the boundary tested
-## Plan             — | Priority (Now/Next/Later) | Items | Why now / dependencies | Acceptance gate |; migration, mixed-version and rollback gates
-## Validation       — requirement → target → mechanism → experiment → acceptance/status; proposed vs executed kept distinct
-## Open questions   — material unknowns, consequences, evidence needed
-## Machine-readable summary — closing JSON block
+## Summary
+Readiness, blockers, critical unknowns, main conclusions, then the score.
+
+## Scorecard
+<!-- render:scorecard -->
+
+## Coverage
+<!-- render:coverage -->
+
+## Context
+Revision/environment, inspected artifacts, exclusions. Audit: system map. Design: requirements, arithmetic, assumptions, trust boundaries.
+
+## Architecture (design)
+Components, ownership, Mermaid diagrams of nontrivial flows and recovery.
+
+## Decisions (design)
+<!-- render:decisions -->
+
+## Findings (audit) / Residual risks (design)
+<!-- render:items -->
+
+## Strengths
+Verified controls or justified mechanisms, each with the boundary tested.
+
+## Plan
+| Priority (Now/Next/Later) | Items | Why now / dependencies | Acceptance gate |; migration, mixed-version and rollback gates.
+
+## Validation
+<!-- render:validation -->
+
+## Open questions
+Material unknowns, consequences, evidence needed.
+
+## Machine-readable summary
+(closing JSON block)
 ```
 
-**State each proof once** and reference it elsewhere; do not repeat an explanation across Summary, Strengths, Validation and Plan. Summarize the ledger as coverage counts instead of printing it.
+Required markers: audit — header, scorecard, coverage, items (validation when it has entries); design — all six. **State each proof once** and reference it elsewhere; do not repeat an explanation across Summary, Strengths, Validation and Plan. Summarize the ledger as coverage counts instead of printing it.
 
-**Compact form** (narrow requests): keep header, scorecard, coverage (one row may do), items or none, relevant decisions, material open questions and JSON; fold Context/Strengths/Plan/Validation into short paragraphs or item fields; keep at least one acceptance check for a consequential design. Aim for 400–800 words excluding JSON for one or two mechanisms. Do not expand to unrelated areas; report "Not assessed" rather than manufacture a number.
+**Compact form** (narrow requests): keep the header, scorecard, coverage and items markers, relevant decisions, material open questions and JSON; fold Context/Strengths/Plan into short paragraphs; keep at least one acceptance check for a consequential design. Aim for 400–800 words excluding JSON for one or two mechanisms. Do not expand to unrelated areas; report "Not assessed" rather than manufacture a number.
 
 ## Closing JSON (schema 2.1)
 
@@ -119,6 +130,7 @@ Field rules (the validator enforces them; it checks contract consistency, not ar
 
 - **Provenance:** `revision`, `environment`, `plugin_version` nonempty; `rubric_version` "2.0"; `dirty` bool/null; `scope` equals the area IDs; `exclusions` string array.
 - **Areas:** `coverage` counts selected ledger entries (not every possible check, not repository-wide completeness); assessed has no unverified entries; partial/unverified have unverified entries and nonempty `unknowns`; N/A has `null` counts, a `reason` and no items. `counts` exclude Info and count each item once in its primary area.
+- **Rendering fields:** items add `impact` and `fix` (nonempty strings) and optional `also_areas` (area IDs); areas add optional `note` (the scorecard's key point); decisions add `options`, `why`, `tradeoff`, `revisit`. The renderer requires them; the validator ignores them.
 - **Items:** `{id, area, severity, rules, effort, title, fingerprint, confidence, evidence, verification}`; `severity` lowercase `critical|high|medium|low|info`; `confidence` `confirmed|likely`; `effort` `S|M|L`; `rules` and `evidence` nonempty string arrays of known rule IDs and `file:line[-line]` or document citations; `verification` names the check, acceptance and executed/planned status (may reference a V-n). Optional `severity_if` + `trigger`. Audit IDs `F-n`, design `R-n`.
 - **Decisions** (design only): `{id: D-n, title, choice, rules}`, optional `requirements` and `validation` (V-n references).
 - **Validation:** `{id: V-n, requirement, method, acceptance, status, evidence}`; status `planned|passed|failed|not_run`; passed/failed need result evidence. Design needs at least one entry.

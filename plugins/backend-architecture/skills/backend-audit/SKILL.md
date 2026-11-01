@@ -2,6 +2,8 @@
 name: backend-audit
 description: Audit existing backend code, configuration or architecture for evidenced correctness, security, reliability and operability risks. Use for backend reviews, bottlenecks, concurrency, messaging and architecture assessment, including Russian requests such as "проверь архитектуру". Covers focused or full audits with the shared scorecard, coverage inventory and JSON report. For a quick check against one area's rules without a report, use backend-rules; for designing new behavior, use backend-design.
 argument-hint: "[areas | all] [path]"
+model: opus
+effort: medium
 ---
 
 # Backend audit
@@ -29,6 +31,6 @@ Every in-scope unit has a terminal status. Before keeping a High/Critical candid
 
 Apply `shared/report.md`: realistic impact, minimal fix and verification per item; conditional severity (`severity_if`, `trigger`) for pending events; strengths instead of invented findings in a healthy area; unsupported hypotheses and owner decisions as open questions. Use the compact form for narrow requests.
 
-- **Validate before delivering:** `python3 scripts/validate_report.py <report> --evidence-root <target>`. A failing report is not finished.
+- **Render and validate before delivering:** write the narrative sections, render markers and closing JSON, then run `python3 scripts/render_report.py <report> --evidence-root <target>`. It validates and fills the tables and finding blocks; a failing report is not finished.
 - **Save** in a writable repository to `docs/audit/backend-audit-<YYYY-MM-DD>.md` unless the user chooses otherwise, without overwriting a different audit of the same day; otherwise return the full report in the reply.
 - **Chat summary:** blockers, coverage gaps with the index recommendation, and the score.

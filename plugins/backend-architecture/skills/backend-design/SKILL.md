@@ -34,4 +34,4 @@ Build the method's traceability table for critical promises, with states/transit
 
 `shared/report.md` (schema 2.1) with Mermaid architecture/flow diagrams for a system design, D-n decisions, R-n risks, a coverage inventory whose invariants come from the requirements, strengths, build/rollout plan and validation. A focused pattern question uses the compact form: relevant areas only and one concise validation scenario.
 
-Validate with `python3 scripts/validate_report.py <report>` before delivering. In a repository save to `docs/design/<slug>.md` unless told otherwise, preserving unrelated content; otherwise deliver in the reply. The design score describes the proposal under its assumptions, not production readiness.
+Write the narrative sections, render markers and closing JSON, then run `python3 scripts/render_report.py <report>`; it validates and fills tables, risks, decisions and validation. A failing report is not finished. In a repository save to `docs/design/<slug>.md` unless told otherwise, preserving unrelated content; otherwise deliver in the reply. The design score describes the proposal under its assumptions, not production readiness.

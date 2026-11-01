@@ -22,11 +22,11 @@ Before checking anything create `docs/audit/backend-audit-<YYYY-MM-DD>.work.md` 
    A unit kind not listed goes to the pass whose areas own its main risk; record that choice in the work file.
 3. **Domain passes.** One per domain module, or per batch of up to three small modules or one registry slice: the domain checks in `method.md` plus any area rule that applies.
 4. **Coverage gate** (below). Nothing is scored before it passes.
-5. **Report** per `report.md`, built from the work file; validate before delivering.
+5. **Report** per `report.md`, built from the work file; render and validate before delivering.
 
 ## Execution with subagents
 
-When the Agent tool is available, run passes 2 and 3 as parallel `backend-architecture:backend-reviewer` agents — one per area pass, one per domain batch — unless the user asked for a single-agent run. Each brief contains: the plugin root path, the pass's areas or domain checks, its unit list, the domain sources, the system map and flows labelled as claims to verify, and the work-file excerpt it needs. Briefs stay neutral: never characterise the code's quality ("defensive", "well-tested", "don't invent findings" — restraint is already the method's rule). The lead appends each returned ledger to the work file.
+When the Agent tool is available, run passes 2 and 3 as parallel `backend-architecture:backend-reviewer` agents — one per area pass, one per domain batch — unless the user asked for a single-agent run. Each brief contains: the plugin root path, the pass's areas or domain checks, its unit list, the domain sources, the system map and flows labelled as claims to verify, and the work-file excerpt it needs. Briefs stay neutral: never characterise the code's quality ("defensive", "well-tested", "don't invent findings" — restraint is already the method's rule). Do not pass a `model` parameter on these Agent calls: it would override the agents' own model and effort settings. The lead appends each returned ledger to the work file.
 
 Then send every High/Critical candidate, and every strength standing for a critical invariant, to `backend-architecture:backend-verifier` agents: up to five claims per agent, never to the reviewer that recorded them, giving code locations and the claim, not the conclusion.
 

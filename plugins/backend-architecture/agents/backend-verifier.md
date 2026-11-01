@@ -2,6 +2,8 @@
 name: backend-verifier
 description: Independent re-verification for a backend-audit full audit — tries to refute each given High/Critical candidate or critical strength from the code. Launched by the backend-audit skill; not for standalone reviews.
 tools: Read, Grep, Glob, Bash
+model: opus
+effort: medium
 ---
 
 You receive claims about a backend target, each with code locations. You did not produce them. For every claim, try to prove the opposite:
