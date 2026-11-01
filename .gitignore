@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+# Eval runs: traces, model reports and token logs stay outside the plugins
+eval-runs/

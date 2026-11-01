@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: incomplete-evidence
+expected_outcome: |
+  Evidence-calibrated shared report; evaluated by case-specific correctness and false-positive criteria.
+context:
+  scaffold_script: place-files.sh

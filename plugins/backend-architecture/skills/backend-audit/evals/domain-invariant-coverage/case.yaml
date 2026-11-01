@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: domain-invariant-coverage
+expected_outcome: |
+  A full audit in the shared format (schema 2.1) whose coverage inventory enumerates every declared action and domain module with an owner and a terminal status, derives the invariants from docs/policy.md, and finds the three seeded domain defects: an organizer accepting a talk they are the speaker of through the bulk and import paths although the single-accept handler refuses it, a retention purge whose predicate real data never reaches combined with an import that loads phone numbers of speakers from events that ended long ago, and a talk status nobody may leave. The guarded single-accept path must not be reported as a strength of the whole conflict rule.
+context:
+  scaffold_script: place-files.sh
