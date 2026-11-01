@@ -1,0 +1,16 @@
+services:
+  gateway:
+    image: nginx:1.27
+    ports: ["8088:80"]
+    volumes: ["./gateway.conf:/etc/nginx/nginx.conf:ro"]
+    networks: [edge, backend]
+  api:
+    image: example-api:fixture
+    networks: [backend]
+  auth:
+    image: verified-auth:fixture
+    networks: [backend]
+networks:
+  edge: {}
+  backend:
+    internal: true

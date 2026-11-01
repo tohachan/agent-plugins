@@ -1,0 +1,16 @@
+{
+  "name": "backend-architecture",
+  "version": "0.3.0",
+  "description": "Audit and design backend systems against best practices, bad practices and anti-patterns across 13 areas, with one scored, structured report format.",
+  "author": {
+    "name": "t@bbbbb.cc"
+  },
+  "keywords": [
+    "backend",
+    "architecture",
+    "audit",
+    "system-design",
+    "go",
+    "nodejs"
+  ]
+}

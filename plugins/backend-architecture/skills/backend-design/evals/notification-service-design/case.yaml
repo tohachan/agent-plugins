@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: notification-service-design
+expected_outcome: |
+  A full design report in the shared format with NFR estimates, architecture diagram, decisions, residual risks, all relevant areas scored and a JSON summary.

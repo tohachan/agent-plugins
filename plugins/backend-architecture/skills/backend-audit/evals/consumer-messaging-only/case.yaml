@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: consumer-messaging-only
+expected_outcome: |
+  A trimmed report in the shared format scoped to messaging and idempotency/consistency only, with the consumer issues found, scores for just those areas and a JSON block.
+context:
+  scaffold_script: place-files.sh

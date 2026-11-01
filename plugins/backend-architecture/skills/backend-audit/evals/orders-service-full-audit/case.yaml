@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: orders-service-full-audit
+expected_outcome: |
+  A full audit report in the shared format: all 13 areas with assessed/partial/unverified/not_applicable status and defensible scores or null, the seeded issues found with file:line evidence and correct severities, caps applied, JSON summary consistent with the scorecard.
+context:
+  scaffold_script: place-files.sh

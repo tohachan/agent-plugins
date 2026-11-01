@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: gateway-owned-auth
+expected_outcome: |
+  Scoped security report follows authentication across gateway and application, without inventing absent app JWT middleware as a vulnerability.
+context:
+  scaffold_script: place-files.sh

@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: ordered-outbox-deltas
+expected_outcome: |
+  Evidence-calibrated shared report; evaluated by case-specific correctness and false-positive criteria.
