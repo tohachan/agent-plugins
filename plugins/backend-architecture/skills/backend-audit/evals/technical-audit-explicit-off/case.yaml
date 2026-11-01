@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: technical-audit-explicit-off
+expected_outcome: |
+  A focused SEC audit honoring explicit domain exclusion, preserving technical authorization checks and reporting the exclusion honestly.
+context:
+  scaffold_script: place-files.sh

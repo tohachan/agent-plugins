@@ -45,7 +45,7 @@ def main():
         if '/evals/' not in str(p):
             for ref in PATH_REF.findall(text):
                 if '<' not in ref and not (ROOT / ref).exists(): errors.append(f'{p.relative_to(ROOT)}: missing path {ref}')
-    for rel in ('shared/method.md', 'shared/report.md', 'shared/full-audit.md', 'knowledge/README.md', 'knowledge/sources.md'):
+    for rel in ('shared/method.md', 'shared/domain-audit.md', 'shared/report.md', 'shared/full-audit.md', 'knowledge/README.md', 'knowledge/sources.md'):
         if not (ROOT / rel).is_file(): errors.append(f'Missing runtime reference {rel}')
     for agent in sorted((ROOT / 'agents').glob('*.md')):
         frontmatter(agent, agent.stem, errors)

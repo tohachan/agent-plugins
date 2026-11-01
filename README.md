@@ -15,7 +15,7 @@ For local development load a working copy directly, for example `claude --plugin
 
 | Plugin | Version | What it does |
 | --- | --- | --- |
-| [backend-architecture](plugins/backend-architecture/README.md) | 0.4.0 | Backend audit, design and single-area rule lookup: 13 cross-cutting areas plus a domain pass derived from the target's own specs, a mandatory coverage inventory, calibrated severities and a validated JSON report. |
+| [backend-architecture](plugins/backend-architecture/README.md) | 0.5.0 | Backend audit, design and single-area rule lookup: 13 technical areas with opt-in domain review (`--domain on`), a mandatory coverage inventory, calibrated severities and a validated JSON report. |
 
 ## Conventions
 

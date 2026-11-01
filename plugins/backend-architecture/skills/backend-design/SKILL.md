@@ -12,7 +12,7 @@ Paths are relative to the plugin root, two levels above this skill directory. Re
 
 Extract, marking assumptions and continuing independent work: actors, core flows and invariants; latency/availability, consistency and data-loss tolerance; average/peak traffic, volume and growth; trust boundaries and sensitive data; existing stack, team, budget, deadline. Ask a small batch of decision-changing questions, usually at most three.
 
-Derive domain invariants from the requirements and the project's own specs, ADRs and policies. For each privileged role state what it may do to records tied to the actor (target = actor); which irreversible decisions need a second person; which workflow states must always have an actor able to move them on; which retention, deletion or delivery obligations apply. Record them in `coverage_inventory.invariants` with their source.
+Read `shared/domain-audit.md`; design still includes domain requirements (the audit's default exclusion does not apply). Derive domain invariants from the requirements and the project's own specs, ADRs and policies. For each privileged role state what it may do to records tied to the actor (target = actor); which irreversible decisions need a second person; which workflow states must always have an actor able to move them on; which retention, deletion or delivery obligations apply. Record them in `coverage_inventory.invariants` with their source.
 
 Show the arithmetic that affects choices (RPS, fan-out, storage, connections, recovery capacity), with ranges for uncertain inputs and the point where the choice changes. Estimated capacity is not measured capacity.
 

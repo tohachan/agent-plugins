@@ -36,6 +36,16 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(self.path.read_text(), first)
         self.assertEqual(load_report(self.path), self.report)
 
+    def test_domain_exclusion_is_visible_in_rendered_report(self):
+        self.report['provenance']['exclusions'].append('Domain business logic (domain=off)')
+        self.report['coverage_inventory'].update(
+            domain_modules=[], domain_modules_reason='Domain business logic excluded (domain=off)')
+        self.assertEqual(self.run_on(self.report), 0)
+        out = self.path.read_text()
+        self.assertIn('**Exclusions:** runtime behavior; Domain business logic (domain=off)', out)
+        self.assertIn('**Domain modules:** Domain business logic excluded (domain=off)', out)
+        self.assertEqual(load_report(self.path), self.report)
+
     def test_invalid_report_writes_nothing(self):
         self.report['overall']['score'] = 9
         text = document(self.report)

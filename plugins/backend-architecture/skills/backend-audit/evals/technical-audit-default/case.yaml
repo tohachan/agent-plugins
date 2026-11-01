@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: technical-audit-default
+expected_outcome: |
+  A full technical audit with domain review excluded by default, no domain passes or business-policy findings, and an evidenced technical authorization bypass in DeleteTalk.
+context:
+  scaffold_script: place-files.sh

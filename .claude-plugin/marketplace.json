@@ -11,8 +11,8 @@
     {
       "name": "backend-architecture",
       "source": "./plugins/backend-architecture",
-      "description": "Audit and design backend systems against best practices, bad practices and anti-patterns across 13 areas plus a domain pass, with a coverage inventory and one scored, structured report format.",
-      "version": "0.4.0",
+      "description": "Audit and design backend systems against best practices, bad practices and anti-patterns across 13 technical areas with opt-in domain review, with a coverage inventory and one scored, structured report format.",
+      "version": "0.5.0",
       "keywords": ["backend", "architecture", "audit", "system-design", "go", "nodejs"]
     }
   ]

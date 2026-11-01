@@ -10,9 +10,19 @@ Audit existing backends and design new ones with evidence-calibrated rules, crit
 | `backend-audit` | Reviewing code, a repo, infra/config or an architecture doc: one area, several, or all. | `/backend-audit all ./services/orders` · "проверь конкурентность и идемпотентность" |
 | `backend-design` | Designing a system, service or feature, or applying a pattern. | `/backend-design notification service, 5M users` · "как сделать идемпотентные вебхуки?" |
 
-A full audit follows `shared/full-audit.md`: fixed passes (inventory → critical flows → four area-group passes → domain passes → coverage gate → report), a work file that holds the inventory and ledger across context compaction, and — when the Agent tool is available — parallel `backend-reviewer` agents per pass plus `backend-verifier` agents that independently try to refute every High/Critical candidate and critical strength. Without subagents the same passes run sequentially, each persisted before the next.
+A full audit follows `shared/full-audit.md`: fixed passes (inventory → critical flows → four area-group passes → optional domain passes → coverage gate → report), a work file that holds the inventory and ledger across context compaction, and — when the Agent tool is available — parallel `backend-reviewer` agents per pass plus `backend-verifier` agents that independently try to refute every High/Critical candidate and critical strength. Without subagents the same passes run sequentially, each persisted before the next.
 
 Models: `backend-audit` (the lead that merges passes and judges) runs on `opus` at `medium` effort for its turn; `backend-reviewer` on `sonnet`/`medium`; `backend-verifier` on `opus`/`medium`, since refuting High/Critical claims is the narrowest and most consequential step. Change them in the frontmatter; a `model` passed on an Agent call would override the agents' setting, so the protocol forbids it.
+
+## Audit scope
+
+```text
+/backend-audit all .                  # technical audit; domain review off by default
+/backend-audit all . --domain on      # include business rules and domain invariants
+/backend-audit SEC ./api --domain off # explicitly technical, focused audit
+```
+
+An explicit natural-language request to check business/domain logic also enables it. `all` or "full audit" alone does not. Domain off skips business-policy discovery and domain reviewer passes; technical authorization enforcement, tenant isolation, transactions, retries and concurrency remain in scope. Reports show the exclusion and assess readiness only within technical scope. Domain instructions in `shared/domain-audit.md` load only when enabled; backend-design still considers domain requirements and backend-rules follows the requested rule.
 
 ## Areas (13)
 
@@ -20,7 +30,7 @@ API · DATA · CACHE · MSG · CONC · IDEM · RES · SCALE · PERF · SEC · OB
 
 ## Token budget
 
-Reading is by need, not by file: design reads `decisions.md`, audit reads `checks.md`, and rule bodies are fetched by Grep on their ID. Approximate knowledge + method bytes loaded (≈ 4 bytes per token):
+Reading is by need, not by file: design reads `decisions.md`, audit reads `checks.md`, and rule bodies are fetched by Grep on their ID. Historical 0.3.0 → 0.4.0 comparison, before domain review became opt-in. Approximate knowledge + method bytes loaded (≈ 4 bytes per token):
 
 | Task | 0.3.0 | 0.4.0 |
 | --- | --- | --- |
@@ -30,7 +40,7 @@ Reading is by need, not by file: design reads `decisions.md`, audit reads `check
 | Full audit, lead with subagents | ≈ 424 KB in one context | ≈ 34 KB lead; each pass ≈ 32–44 KB in its own context |
 | System design, ~8 areas | ≈ 39 KB + whole area files (≈ 30 KB each) | ≈ 31 KB + `decisions.md` (≈ 4 KB each) |
 
-Shared method and report contract shrank only modestly (≈ 39 KB → 34 KB with the skill); the savings come from not loading rule bodies wholesale. Rule text itself is unchanged, so eval-tuned behavior is preserved.
+Shared method and report contract shrank only modestly (≈ 39 KB → 34 KB with the skill); the savings come from not loading rule bodies wholesale. Rule text itself is unchanged. In 0.5.0, domain scope changes which checks run; runtime and token savings require comparative eval runs.
 
 ## Output
 
@@ -42,7 +52,7 @@ Both report-producing skills follow `shared/report.md`. Tables, findings, decisi
 .claude-plugin/plugin.json
 agents/               backend-reviewer.md, backend-verifier.md (full-audit passes)
 knowledge/            README.md, sources.md, _TEMPLATE.md, <prefix>/{decisions,checks,rules}.md × 13
-shared/               method.md (evidence & coverage), full-audit.md (pass protocol), report.md (contract)
+shared/               method.md (evidence & coverage), full-audit.md (pass protocol), domain-audit.md (opt-in domain checks), report.md (contract)
 scripts/              report renderer, report/repository validators and tests (Python stdlib only)
 evals/README.md       comparative behavioral evaluation protocol
 skills/backend-{rules,audit,design}/SKILL.md (+ evals/)
@@ -60,6 +70,10 @@ python3 -B scripts/validate_report.py path/to/report.md --evidence-root path/to/
 ```
 
 The scripts use only the Python standard library (no third-party packages, network access or subprocesses); the validator reads files inside `--evidence-root` only, and the renderer writes only the report file it was given, after validation passes. `skills/*/evals/` keeps the Claude plugin eval layout; scaffold scripts copy fixtures into a disposable directory. Follow [the evaluation protocol](evals/README.md) for baseline/revised comparisons and token measurements. Structural validation does not establish model quality.
+
+## Changes in 0.5.0
+
+Backend audit now excludes domain business logic by default; enable it with `--domain on` or an explicit request to review business rules. The mode applies to focused/full audits, reviewers, verifiers and mixed checklists. Domain-only instructions moved to `shared/domain-audit.md`. Reports render scope exclusions; excluded domain modules are represented using existing schema 2.1 fields, without treating the exclusion as a coverage failure. Design and direct rule lookup retain their scope. Evals cover default-off, explicit-off and explicit-on behavior; no measured speedup is claimed.
 
 ## Changes in 0.4.0
 

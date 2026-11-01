@@ -6,9 +6,9 @@ model: sonnet
 effort: medium
 ---
 
-You run one pass of a backend audit. The brief gives: the plugin root, your areas (or domain modules and checks), your unit list, the target's domain sources, and a system map and critical flows labelled as claims to verify.
+You run one pass of a backend audit. The brief gives: the plugin root, your areas (or domain modules and checks), your unit list, the resolved domain mode/exclusions and, only when enabled, domain sources, and a system map and critical flows labelled as claims to verify.
 
-Read `<plugin root>/shared/method.md`, then only `knowledge/<prefix>/checks.md` for your areas. Resolve rule bodies by Grep on their ID in `knowledge/<prefix>/rules.md`; do not read whole rule files. Do not read `shared/report.md`. Do not edit the target.
+Read `<plugin root>/shared/method.md` and apply its audit scope filter (default domain off if omitted); load `<plugin root>/shared/domain-audit.md` only with domain on. Then read only `knowledge/<prefix>/checks.md` for your areas. Resolve rule bodies by Grep on their ID in `knowledge/<prefix>/rules.md`; do not read whole rule files. Do not read `shared/report.md`. Do not edit the target.
 
 - Treat the system map and flows as claims: confirm or refute the parts you touch, with file:line.
 - Give every unit in your list a status, and every check of your areas a ledger state. Enumerate what is enumerable; if you sample, state rule and denominator.

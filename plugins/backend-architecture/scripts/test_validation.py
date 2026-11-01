@@ -115,6 +115,21 @@ class ReportContractTests(unittest.TestCase):
         self.assertTrue(any('domain_modules_reason' in x for x in validate(self.report)))
         self.ci()['domain_modules_reason'] = 'Single-mechanism focused audit'
         self.assertEqual(validate(self.report), [])
+    def technical_scope(self):
+        self.report['provenance']['exclusions'].append('Domain business logic (domain=off)')
+        self.ci().update(domain_modules=[], domain_modules_reason='Domain business logic excluded (domain=off)')
+        self.report['areas'][0].update(status='assessed', confidence='high',
+            coverage={'verified': 2, 'violation': 0, 'unverified': 0, 'not_applicable': 0}, unknowns=[])
+        self.report['validation'][0].update(status='passed', evidence=['Recovery test passed'])
+        self.report['overall'].update(readiness='supported_in_scope', provisional=False, confidence='high', unknowns=[])
+    def test_domain_exclusion_allows_supported_technical_scope(self):
+        self.technical_scope()
+        self.assertEqual(validate(self.report), [])
+    def test_domain_exclusion_does_not_hide_technical_coverage_gaps(self):
+        self.technical_scope()
+        self.ci()['units'][0].update(checked=2, not_covered=1)
+        self.ci().update(gaps=['One entry point not inspected'], index_recommendation='Enumerate routes using an index')
+        self.assertTrue(any('not covered' in x for x in validate(self.report)))
     def test_invariant_requires_source(self):
         self.ci()['invariants'][0]['source'] = ''
         self.assertTrue(any('source required' in x for x in validate(self.report)))

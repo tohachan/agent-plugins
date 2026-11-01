@@ -30,6 +30,12 @@ Never substitute zero for `null`. Report discovered violations even in an unveri
 - **Confidence.** Area: high = corroborated critical mechanisms/paths; medium = supporting but limited evidence; low = assumptions dominate; partial cannot be high; `null` for unverified/N/A. Overall: `null` without numeric inputs; a provisional overall cannot be high.
 - **Readiness** leads the summary: `blocked` if High/Critical items or demonstrated unmet mandatory requirements exist; else `undetermined` if material evidence or critical validation is missing or any coverage unit/domain module is `not_covered`; else `supported_in_scope`. It is a scoped assessment, never a launch approval (design: support for the proposal only). A high average cannot override blockers. Do not invent residual risks to keep a sound design below 10.
 
+## Domain scope in audit reports
+
+With domain review off (the audit default), add "Domain business logic (domain=off)" to `provenance.exclusions`, state the exclusion in the summary, and set `coverage_inventory.domain_modules` to `[]` with `domain_modules_reason: "Domain business logic excluded (domain=off)"`. Do not enumerate excluded business obligations or label modules checked. Keep technical invariants in `invariants`; if none are established, use `[]` with an honest `invariants_reason`.
+
+Exclusion is a deliberate scope boundary, not missing evidence: do not add excluded domain modules to `units`, `gaps` or `not_covered` counts, or lower readiness solely for the exclusion. Missing technical evidence still affects readiness normally. Scores and `supported_in_scope` cover technical scope only. With domain on, inventory and assess in-scope domain modules normally; name the enabled domain review in the summary. Design continues to derive invariants from requirements. Schema 2.1 is unchanged.
+
 ## Severity
 
 | Severity | Concrete scenario |
@@ -98,13 +104,15 @@ Required markers: audit — header, scorecard, coverage, items (validation when 
 
 ## Closing JSON (schema 2.1)
 
+This focused example includes domain review (`--domain on`); for the default technical audit use the exclusion and empty domain-module inventory described above.
+
 ```json
 {
   "schema_version": "2.1",
   "mode": "audit",
   "target": "orders-service",
   "date": "2026-11-01",
-  "provenance": {"revision": "unknown", "dirty": null, "environment": "source-only", "plugin_version": "0.4.0", "rubric_version": "2.0", "scope": ["RES", "CACHE"], "exclusions": ["runtime behavior"]},
+  "provenance": {"revision": "unknown", "dirty": null, "environment": "source-only", "plugin_version": "0.5.0", "rubric_version": "2.0", "scope": ["RES", "CACHE"], "exclusions": ["runtime behavior"]},
   "overall": {"score": 7.0, "confidence": "medium", "capped": false, "provisional": true, "readiness": "undetermined", "blockers": [], "unknowns": ["Runtime recovery not exercised"], "score_inputs": [7], "denominator": 1},
   "areas": [
     {"id": "RES", "status": "partial", "score": 7, "confidence": "medium", "counts": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "coverage": {"verified": 1, "violation": 0, "unverified": 1, "not_applicable": 0}, "evidence": ["client.go:24"], "unknowns": ["Runtime recovery not exercised"]},

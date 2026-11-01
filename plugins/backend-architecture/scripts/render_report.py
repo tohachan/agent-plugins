@@ -39,8 +39,11 @@ def score_text(score, status):
 def header(r):
     o = r['overall']
     overall = 'Not assessed' if o.get('score') is None else score_text(o['score'], None) + (' (provisional)' if o.get('provisional') else '')
-    return table(['Mode', 'Target', 'Areas', 'Date', 'Overall', 'Readiness', 'Confidence'],
+    result = table(['Mode', 'Target', 'Areas', 'Date', 'Overall', 'Readiness', 'Confidence'],
                  [[r['mode'], r['target'], ', '.join(a['id'] for a in r['areas']), r['date'], overall, o.get('readiness'), o.get('confidence') or 'unknown']])
+    exclusions = r.get('provenance', {}).get('exclusions', [])
+    if exclusions: result += '\n\n**Exclusions:** ' + cell(exclusions)
+    return result
 
 def scorecard(r):
     rows, totals = [], dict(critical=0, high=0, medium=0, low=0)

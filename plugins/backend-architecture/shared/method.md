@@ -2,6 +2,14 @@
 
 Governs every area file, including checklist "Fail" labels and default severities. Read once per task.
 
+## Audit scope
+
+`backend-audit` defaults to `domain=off`; `--domain on` or an explicit request to check business/domain logic enables it. An explicit `--domain off` excludes it. `all` selects all 13 technical areas, not domain review. Resolve scope before inventory and carry it into every reviewer/verifier brief and the work file. These defaults do not change backend-design or explicit backend-rules lookups.
+
+- **Off:** inspect technical mechanisms and their enforcement (authn/authz, tenant isolation, transactions, races, retries, ordering, timeouts, encryption, deletion-job mechanics, module boundaries). Read business code as needed to trace them, but do not derive or judge business policies, approval eligibility, separation of duties, business workflow liveness or domain retention obligations. Do not enumerate domain invariants, load `shared/domain-audit.md`, launch domain passes or ask domain-policy questions.
+- **Checklist scope:** with domain off, skip SEC-CHK-21, SEC-CHK-23, IDEM-CHK-21 and DATA-CHK-21 as `not_applicable` with reason "domain review excluded". For mixed checks (including SEC-CHK-22, SEC-CHK-20 and ARCH checks), assess only the technical portion; keep bypass checks for authentication, authorization enforcement and tenant isolation. Cross-references do not re-enable domain review. Never describe the excluded portion as verified.
+- **On / design:** read `shared/domain-audit.md`; derive business invariants from the target's own sources. A focused audit stays within its selected areas/mechanisms.
+
 ## Evidence
 
 - Record target revision (commit + dirty state, or document version), environment, artifacts and exclusions; plugin version from `.claude-plugin/plugin.json`. Source code alone is not production verification.
@@ -16,23 +24,11 @@ Governs every area file, including checklist "Fail" labels and default severitie
 
 Coverage holes hide the findings that matter most, because the reviewed paths are usually the well-built ones. Build the inventory before checking anything and keep it to the end.
 
-1. **Enumerate units** present in scope: entry points (HTTP/RPC operations, GraphQL resolvers, CLI/admin commands, consumers, jobs, schedules); authorization declarations (permission registries, policy tables, roles, route guards); domain modules (packages, services, bounded contexts); stores (tables, collections, buckets, journals); external dependencies; documented obligations (specs, ADRs, contracts, privacy/retention policies, compliance notes). Count them from the project's own artifacts: contracts, route tables, registries, migrations, code-graph exports.
+1. **Enumerate units** present in scope: entry points (HTTP/RPC operations, GraphQL resolvers, CLI/admin commands, consumers, jobs, schedules); authorization declarations (permission registries, policy tables, roles, route guards); structural modules/services; stores (tables, collections, buckets, journals); external dependencies; in-scope technical requirements (contracts, SLOs, ADRs). With domain review enabled, also enumerate domain modules and documented business obligations. Count them from the project's own artifacts: contracts, route tables, registries, migrations, code-graph exports.
 2. **Enumerate, do not sample, whatever is enumerable.** A registry, route table, contract or migration list is finite: walk all of it. Sample only units that cannot be enumerated with the available tools, stating rule, denominator and why.
 3. **Exactly one owner pass per unit** (lead or a named reviewer) and a terminal status: `checked`, `sampled` (rule + denominator) or `not_covered` (reason). An unowned unit is a defect of the audit, not of the target; the validator rejects inventories that do not add up.
-4. **Two axes.** The 13 areas and the domain modules are both mandatory in a full audit. An area pass does not cover a module's domain rules; a module pass does not cover platform concerns.
+4. **Coverage axes.** All 13 technical areas are mandatory in a full audit; the domain axis is mandatory only with `domain=on`. An area pass does not cover a module's domain rules; a module pass does not cover platform concerns.
 5. **Use a code index** when the workspace has one (graphify graph, LSP references, ctags, Sourcegraph) to enumerate writers, callers and entry points. When enumeration is incomplete (no index, budget exhausted), report which unit kinds and how many units remain, and that a deeper pass is possible over an indexed codebase (for example a graphify index). Readiness cannot be `supported_in_scope` while units remain uncovered.
-
-## Domain pass
-
-The skill does not define the target's domain. Derive it from the target's own sources — specs, ADRs, contracts, policies, tests, code comments, the authorization registry — and record each invariant with its source, owner and every entry point that can violate it. For each domain module apply at least:
-
-- **Privilege matrix (SEC-CHK-21).** For every action admitting an elevated role, decide target = actor and targets tied to the actor (records they own or co-own, approvals of their own requests, their own limits, grants or payouts). Prefer a full role × action × target-relation table built from the registry over reading a few handlers.
-- **One invariant, every writer (SEC-CHK-22).** A guard found in one module is evidence about that place only. List every other path reaching the same state — bulk, import, batch, CLI, job, admin tool, database policy — and confirm each enforces it.
-- **Irreversible decisions (SEC-CHK-23).** Who may prepare, modify, confirm on behalf of others and approve; whether one principal completes the chain; whether the sources require separation. Silent sources produce an owner question, not a finding.
-- **Workflow liveness (IDEM-CHK-21).** Every non-terminal state has an actor or job still permitted to move it forward after the preceding steps, and someone is told.
-- **Documented obligations (DATA-CHK-21).** Every retention, deletion, consent, audit or delivery obligation has enforcing code on every ingestion path, with predicates that real data reaches.
-
-Area rules still apply inside a domain pass. Record domain invariants with their status in the report's coverage section.
 
 ## Check ledger
 
@@ -60,7 +56,6 @@ When these flows exist, look up the named rules even during a partial read:
 - Outbox/ordered work: IDEM-BP-8, IDEM-BP-15, MSG-BP-1 — partition keys alone do not order parallel publishers; snapshot replacement differs from ordered deltas; commits cannot skip unfinished earlier records.
 - Concurrency: DATA-BP-6, CONC-BP-12 — isolation and lease fencing protect different boundaries; neither a lock name nor a transaction keyword proves an invariant.
 - Authorization and bounds: SEC-BP-1, SEC-BP-3, RES-BP-1 — follow the complete enforcement path, including schema, gateway and inherited deadlines.
-- Domain authorization: SEC-BP-21, SEC-AP-8 — a central policy layer proves the chokepoint exists, not that each role/target decision is right; check the matrix.
 
 ## Verification and acceptance
 
