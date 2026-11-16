@@ -88,7 +88,7 @@
 
 `IDEM-AP-3` — **Exactly-once by configuration.** Symptoms: design docs claiming "Kafka exactly-once" or "SQS FIFO dedup" means consumers need no idempotency; consumers write to Postgres or call APIs. Why it hurts: guarantees end at the broker boundary (FIFO dedup window is 5 minutes); duplicates reach the DB/API after crashes and rebalances. Way out: IDEM-BP-18 with idempotent sinks.
 
-`IDEM-AP-4` — **Choreography spaghetti.** Symptoms: > 3 services reacting to each other's events to complete one business flow; no component knows the flow's state; cyclic event dependencies; failures discovered by customer support. Why it hurts: no place to see, time out or compensate a stuck flow. Way out: an orchestrator (or durable workflow engine) owning the saga state; keep events for notification, commands for steps.
+`IDEM-AP-4` — **Choreography spaghetti.** Symptoms: several services reacting to each other's events to complete one business flow, with no place to see its state; no component knows the flow's state; cyclic event dependencies; failures discovered by customer support. Why it hurts: no place to see, time out or compensate a stuck flow. Way out: an orchestrator (or durable workflow engine) owning the saga state; keep events for notification, commands for steps.
 
 `IDEM-AP-5` — **Saga without isolation countermeasures.** Symptoms: steps commit final-looking states immediately; other flows act on them (ship before payment confirmed, sell reserved stock). Why it hurts: compensation arrives after others acted on intermediate data — anomalies that cannot be undone. Way out: semantic locks, pending states, pivot step ordering (IDEM-BP-11).
 

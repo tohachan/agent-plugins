@@ -11,6 +11,25 @@ RULE_DEF = re.compile(r'`([A-Z]+-(?:BP|BAD|AP)-\d+)`')
 CHECK_DEF = re.compile(r'\| `?([A-Z]+-CHK-\d+)`? \|')
 PATH_REF = re.compile(r'`((?:shared|knowledge|scripts|agents)/[A-Za-z0-9_./-]+\.(?:md|py))`')
 
+RULES_CELL_ID = re.compile(r'[A-Z]+-(?:BP|BAD|AP)-\d+')
+
+def decision_errors(label, text, definitions):
+    """The Key decisions table ends in a Rules column: every row lists known rule IDs, or an explicit dash."""
+    errors, rows = [], [l.strip() for l in text.splitlines() if l.strip().startswith('|')]
+    split = lambda l: [c.strip() for c in l.strip('|').split('|')]
+    if len(rows) < 3 or split(rows[0])[-1] != 'Rules' or not set(''.join(split(rows[1]))) <= set('-: '):
+        return [f'{label}: decisions table needs a header ending in Rules, a separator and at least one row']
+    width = len(split(rows[0]))
+    for line in rows[2:]:
+        cells = split(line)
+        if len(cells) != width: errors.append(f'{label}: row has {len(cells)} cells, expected {width}: {cells[0]}'); continue
+        cell = cells[-1]
+        if cell == '\u2014': continue
+        ids = [x.strip() for x in cell.split(',')]
+        if not cell or any(not RULES_CELL_ID.fullmatch(x) for x in ids): errors.append(f'{label}: Rules cell of "{cells[0]}" must list rule IDs or \u2014')
+        errors.extend(f'{label}: Rules cell of "{cells[0]}" cites unknown {x}' for x in ids if RULES_CELL_ID.fullmatch(x) and x not in definitions)
+    return errors
+
 def frontmatter(path, name, errors):
     body = path.read_text()
     if not body.startswith('---\n') or f'name: {name}\n' not in body.split('\n---\n', 1)[0] or '\ndescription: ' not in body:
@@ -32,6 +51,9 @@ def main():
                 if ident.split('-')[0].lower() != d: errors.append(f'{ident} defined outside knowledge/{ident.split("-")[0].lower()}/')
                 if ident in definitions: errors.append(f'Duplicate rule {ident}')
                 definitions[ident] = (p, n)
+    for d in sorted(dirs):
+        p = ROOT / 'knowledge' / d / 'decisions.md'
+        if p.is_file(): errors.extend(decision_errors(str(p.relative_to(ROOT)), p.read_text(), definitions))
     for p in ROOT.rglob('*.md'):
         if p.name == '_TEMPLATE.md': continue
         text = p.read_text()

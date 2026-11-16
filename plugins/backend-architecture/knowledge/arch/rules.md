@@ -92,7 +92,7 @@
 
 `ARCH-AP-6` — **A module whose coupling blocks required change or isolation.** Symptoms: measured release contention, frequent unrelated change failures, unclear ownership or an excessive blast radius. Table count and centrality alone do not make a small monolith defective. Establish the actual constraint, improve internal boundaries first, and extract only when justified by ARCH-BP-1.
 
-`ARCH-AP-7` — **Premature microservices.** Symptoms: < 10 engineers running 10+ services; boundaries changed several times in the first year; no tracing, per-service on-call, or contract tests. Why it hurts: speed collapses on infrastructure work and cross-service refactors while the domain is still moving. Way out: consolidate into a modular monolith with the same module boundaries; extract again only per ARCH-BP-1 criteria.
+`ARCH-AP-7` — **Premature microservices.** Symptoms: service count far above what the teams can operate (no per-service ownership, on-call or tracing); boundaries changed several times in the first year; no tracing, per-service on-call, or contract tests. Why it hurts: speed collapses on infrastructure work and cross-service refactors while the domain is still moving. Way out: consolidate into a modular monolith with the same module boundaries; extract again only per ARCH-BP-1 criteria.
 
 `ARCH-AP-8` — **Over-layered "clean" architecture.** Symptoms: controller → service → use case → domain service → repository interface → repository impl → DAO for a CRUD endpoint; 4 near-identical DTOs per entity; mapping code exceeds logic. Why it hurts: slower changes, more bugs in mapping, no testability gain. Way out: collapse layers where nothing varies; keep ports only at true I/O boundaries (ARCH-BP-10).
 
