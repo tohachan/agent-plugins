@@ -24,3 +24,10 @@
 | CACHE-CHK-16 | Is the CDN configured with explicit keys, purge and stale-if-error? (CACHE-BP-16) | Terraform/CDN config: cache key query/header/cookie whitelist, `s-maxage`, purge integration in publish/deploy pipeline, origin shield. Fail: cookie in cache key (0% hit) or no purge path for mutable content | Low (Medium if origin depends on it) |
 | CACHE-CHK-17 | Are hit ratio, evictions and cache latency monitored? (CACHE-BP-18, CACHE-AP-3) | Metrics/dashboards for hit/miss per prefix, `evicted_keys`, `used_memory`, cache p99. Fail: no hit-ratio metric for any cache | Medium |
 | CACHE-CHK-18 | Is the cache used for correctness locks or masking a slow query? (CACHE-AP-2, CACHE-AP-6) | grep `SetNX`, `SET … NX`, `redlock`, `redsync`, `Redlock` guarding money/inventory; cached queries whose uncached latency exceeds the SLO. Fail: correctness depends on the Redis lock, or miss path breaches SLO | High |
+
+## Also scan for (rules not cited above)
+
+Bodies: `knowledge/cache/rules.md`, looked up by ID.
+
+- CACHE-BP-10 — See IDEM-BP-14 (canonical mechanism)
+- CACHE-BP-17 — Warm caches before traffic cutover and after flushes

@@ -72,30 +72,15 @@
 
 ## Anti-patterns
 
-`CACHE-AP-1` — **Cache as source of truth.**
-- Symptoms: data written only to Redis (carts, balances, quotas, workflow state) with no durable copy; restarts or evictions lose business data; AOF/RDB treated as the backup.
-- Why it hurts: eviction, failover with async replication and `FLUSHALL` lose committed writes.
-- Way out: persist to a durable store and cache from it; if Redis must hold state, run it as a database (separate instance, `noeviction`, AOF `everysec` or managed durable variant such as MemoryDB) and accept it is no longer a cache.
+`CACHE-AP-1` — **Cache as source of truth.** Symptoms: data written only to Redis (carts, balances, quotas, workflow state) with no durable copy; restarts or evictions lose business data; AOF/RDB treated as the backup. Why it hurts: eviction, failover with async replication and `FLUSHALL` lose committed writes. Way out: persist to a durable store and cache from it; if Redis must hold state, run it as a database (separate instance, `noeviction`, AOF `everysec` or managed durable variant such as MemoryDB) and accept it is no longer a cache.
 
-`CACHE-AP-2` — **Caching to hide a broken query.**
-- Symptoms: a 3 s query "fixed" with a 10 min cache; the first request after expiry still times out; DB falls over when the cache is flushed.
-- Why it hurts: the system's real capacity is the uncached path; every miss or outage exposes it.
-- Way out: fix the query/index/model first (DATA, PERF); cache only paths that are already acceptable uncached at miss rates you will see.
+`CACHE-AP-2` — **Caching to hide a broken query.** Symptoms: a 3 s query "fixed" with a 10 min cache; the first request after expiry still times out; DB falls over when the cache is flushed. Why it hurts: the system's real capacity is the uncached path; every miss or outage exposes it. Way out: fix the query/index/model first (DATA, PERF); cache only paths that are already acceptable uncached at miss rates you will see.
 
-`CACHE-AP-3` — **Cache-everything layer.**
-- Symptoms: a generic decorator/middleware caches every repository call or HTTP response; many keyspaces with < 50% hit ratio; invalidation bugs reported as "random stale data".
-- Why it hurts: memory and latency cost without benefit; impossible to reason about staleness per data type.
-- Way out: cache by explicit decision per data type (CACHE-BP-1); remove low-hit keyspaces based on metrics (CACHE-BP-18).
+`CACHE-AP-3` — **Cache-everything layer.** Symptoms: a generic decorator/middleware caches every repository call or HTTP response; many keyspaces with < 50% hit ratio; invalidation bugs reported as "random stale data". Why it hurts: memory and latency cost without benefit; impossible to reason about staleness per data type. Way out: cache by explicit decision per data type (CACHE-BP-1); remove low-hit keyspaces based on metrics (CACHE-BP-18).
 
-`CACHE-AP-4` — **Invalidation scattered across write paths.**
-- Symptoms: `DEL product:*` calls sprinkled in handlers, admin tools, batch jobs; other services write the same table without invalidating.
-- Why it hurts: every new write path is a stale-data bug; correctness depends on discipline.
-- Way out: centralise invalidation in the repository/write model, or drive it from CDC/outbox events (CACHE-BP-9); short TTL as safety net.
+`CACHE-AP-4` — **Invalidation scattered across write paths.** Symptoms: `DEL product:*` calls sprinkled in handlers, admin tools, batch jobs; other services write the same table without invalidating. Why it hurts: every new write path is a stale-data bug; correctness depends on discipline. Way out: centralise invalidation in the repository/write model, or drive it from CDC/outbox events (CACHE-BP-9); short TTL as safety net.
 
-`CACHE-AP-5` — **Cache-dependent availability (thundering herd on recovery).**
-- Symptoms: DB sized for the cached load only; a cache node failure or deploy flush causes a DB outage; recovery itself causes a second outage.
-- Why it hurts: the cache became a hidden hard dependency with no fallback capacity.
-- Way out: protected fallback (CACHE-BP-8), coalescing (CACHE-BP-4), warm-up (CACHE-BP-17), replicated cache clusters, and capacity planning for a realistic miss rate (SCALE).
+`CACHE-AP-5` — **Cache-dependent availability (thundering herd on recovery).** Symptoms: DB sized for the cached load only; a cache node failure or deploy flush causes a DB outage; recovery itself causes a second outage. Why it hurts: the cache became a hidden hard dependency with no fallback capacity. Way out: protected fallback (CACHE-BP-8), coalescing (CACHE-BP-4), warm-up (CACHE-BP-17), replicated cache clusters, and capacity planning for a realistic miss rate (SCALE).
 
 `CACHE-AP-6` — **See CONC-AP-1 (canonical mechanism).** For correctness-sensitive cache locks verify resource-side fencing or a durable invariant.
 

@@ -8,7 +8,10 @@ from validate_report import load_report, validate, AREAS
 ROOT = Path(__file__).resolve().parents[1]
 AREA_FILES = ('decisions.md', 'checks.md', 'rules.md')
 RULE_DEF = re.compile(r'`([A-Z]+-(?:BP|BAD|AP)-\d+)`')
-CHECK_DEF = re.compile(r'\| `?([A-Z]+-CHK-\d+)`? \|')
+CHECK_DEF = re.compile(r'\| ([A-Z]+-CHK-\d+) \|')
+RULE_MARKED = re.compile(r'^\s*[-*>]\s*`[A-Z]+-(?:BP|BAD|AP)-\d+`')
+CHECK_TICKED = re.compile(r'^\|\s*`[A-Z]+-CHK-\d+`')
+ABBREVIATED = re.compile(r'\b[A-Z]+-(?:BP|BAD|AP|CHK)-\d+(?:/\d+|, (?:BP|BAD|AP|CHK)-\d+)|(?<![A-Z]-)\b(?:BP|BAD|AP|CHK)-\d+\b')
 PATH_REF = re.compile(r'`((?:shared|knowledge|scripts|agents)/[A-Za-z0-9_./-]+\.(?:md|py))`')
 
 RULES_CELL_ID = re.compile(r'[A-Z]+-(?:BP|BAD|AP)-\d+')
@@ -29,6 +32,25 @@ def decision_errors(label, text, definitions):
         if not cell or any(not RULES_CELL_ID.fullmatch(x) for x in ids): errors.append(f'{label}: Rules cell of "{cells[0]}" must list rule IDs or \u2014')
         errors.extend(f'{label}: Rules cell of "{cells[0]}" cites unknown {x}' for x in ids if RULES_CELL_ID.fullmatch(x) and x not in definitions)
     return errors
+
+def rules_layout_errors(label, text):
+    """Every BP/BAD/AP rule is one line that starts with its backticked ID: Grep `^`ID`` returns the whole body."""
+    errors, lines = [], text.splitlines()
+    for n, line in enumerate(lines, 1):
+        if RULE_MARKED.match(line): errors.append(f'{label}:{n}: rule has a list marker; the line must start with the backticked ID')
+        if RULE_DEF.match(line) and n < len(lines) and lines[n].strip(): errors.append(f'{label}:{n}: rule body continues on the next line; keep BP, BAD and AP to one line')
+    return errors
+
+def checks_layout_errors(label, text):
+    return [f'{label}:{n}: check ID in backticks; write it plain so `^| ID |` finds it' for n, l in enumerate(text.splitlines(), 1) if CHECK_TICKED.match(l)]
+
+def abbreviation_errors(label, text):
+    """IDs are written in full everywhere: no `PREFIX-BP-1, BP-3`, `PREFIX-BP-12/13` or bare `BP-3`."""
+    return [f'{label}: abbreviated ID {m.group(0)!r}; write each ID in full' for m in ABBREVIATED.finditer(text)]
+
+def orphan_errors(definitions, cited):
+    return [f'{i} is not cited by any check, "Also scan for" entry or decisions Rules cell' for i in sorted(definitions)
+            if RULE_DEF.fullmatch(f'`{i}`') and i not in cited]
 
 def frontmatter(path, name, errors):
     body = path.read_text()
@@ -51,12 +73,22 @@ def main():
                 if ident.split('-')[0].lower() != d: errors.append(f'{ident} defined outside knowledge/{ident.split("-")[0].lower()}/')
                 if ident in definitions: errors.append(f'Duplicate rule {ident}')
                 definitions[ident] = (p, n)
+    cited = set()
     for d in sorted(dirs):
         p = ROOT / 'knowledge' / d / 'decisions.md'
-        if p.is_file(): errors.extend(decision_errors(str(p.relative_to(ROOT)), p.read_text(), definitions))
+        if p.is_file():
+            errors.extend(decision_errors(str(p.relative_to(ROOT)), p.read_text(), definitions))
+            cited.update(RULES_CELL_ID.findall(''.join(l.split('|')[-2] for l in p.read_text().splitlines() if l.startswith('|') and l.count('|') > 2)))
+        for name, check in (('rules.md', rules_layout_errors), ('checks.md', checks_layout_errors)):
+            q = ROOT / 'knowledge' / d / name
+            if q.is_file(): errors.extend(check(str(q.relative_to(ROOT)), q.read_text()))
+        q = ROOT / 'knowledge' / d / 'checks.md'
+        if q.is_file(): cited.update(RULES_CELL_ID.findall(q.read_text()))
+    errors.extend(orphan_errors(definitions, cited))
     for p in ROOT.rglob('*.md'):
         if p.name == '_TEMPLATE.md': continue
         text = p.read_text()
+        errors.extend(abbreviation_errors(str(p.relative_to(ROOT)), text))
         for ident in re.findall(r'\b[A-Z]{2,6}-(?:BP|BAD|AP|CHK)-\d+\b', text):
             if ident not in definitions and not ident.startswith('XX-'):
                 errors.append(f'{p.relative_to(ROOT)}: unknown {ident}')

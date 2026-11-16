@@ -82,40 +82,19 @@
 
 ## Anti-patterns
 
-`DATA-AP-1` — **Integration database (shared DB across services).**
-- Symptoms: several services read/write the same tables; migrations need cross-team sign-off; one service's query slows others.
-- Why it hurts: schema becomes a public contract no one can change; no ownership of invariants; coupled deploys and failures.
-- Way out: one owning service per table; others use its API, events (MSG) or a published read model/CDC stream; migrate readers first, then revoke grants.
+`DATA-AP-1` — **Integration database (shared DB across services).** Symptoms: several services read/write the same tables; migrations need cross-team sign-off; one service's query slows others. Why it hurts: schema becomes a public contract no one can change; no ownership of invariants; coupled deploys and failures. Way out: one owning service per table; others use its API, events (MSG) or a published read model/CDC stream; migrate readers first, then revoke grants.
 
-`DATA-AP-2` — **ORM as the schema designer.**
-- Symptoms: TypeORM `synchronize: true`, GORM `AutoMigrate` at startup in production, no reviewed migration files, generated queries never inspected.
-- Why it hurts: uncontrolled locking DDL at deploy, missing constraints and indexes, accidental drops, N+1 hidden behind lazy loading.
-- Way out: versioned migration files (goose, Atlas, golang-migrate, Prisma Migrate, Knex/Drizzle migrations) reviewed and linted; log/inspect SQL of hot paths; constraints declared explicitly.
+`DATA-AP-2` — **ORM as the schema designer.** Symptoms: TypeORM `synchronize: true`, GORM `AutoMigrate` at startup in production, no reviewed migration files, generated queries never inspected. Why it hurts: uncontrolled locking DDL at deploy, missing constraints and indexes, accidental drops, N+1 hidden behind lazy loading. Way out: versioned migration files (goose, Atlas, golang-migrate, Prisma Migrate, Knex/Drizzle migrations) reviewed and linted; log/inspect SQL of hot paths; constraints declared explicitly.
 
-`DATA-AP-3` — **Entity-Attribute-Value or "JSON bag" generic schema.**
-- Symptoms: `attributes(entity_id, key, value text)` or one `data jsonb` column holding most fields; types and constraints enforced nowhere.
-- Why it hurts: no constraints, painful queries, poor plans, every consumer re-validates.
-- Way out: real columns for queried and invariant-bearing fields; `jsonb` only for genuinely sparse, opaque extras, with GIN/expression indexes on the paths actually queried.
+`DATA-AP-3` — **Entity-Attribute-Value or "JSON bag" generic schema.** Symptoms: `attributes(entity_id, key, value text)` or one `data jsonb` column holding most fields; types and constraints enforced nowhere. Why it hurts: no constraints, painful queries, poor plans, every consumer re-validates. Way out: real columns for queried and invariant-bearing fields; `jsonb` only for genuinely sparse, opaque extras, with GIN/expression indexes on the paths actually queried.
 
-`DATA-AP-4` — **Store chosen by fashion, not access pattern.**
-- Symptoms: relational data with joins and transactions forced into MongoDB/DynamoDB; or a search cluster used as primary storage; multiple stores for a small team.
-- Why it hurts: invariants reimplemented in code, consistency bugs, operational load per store.
-- Way out: list access patterns and invariants first; consolidate on a relational store where it fits; keep specialised stores as derived projections fed by CDC.
+`DATA-AP-4` — **Store chosen by fashion, not access pattern.** Symptoms: relational data with joins and transactions forced into MongoDB/DynamoDB; or a search cluster used as primary storage; multiple stores for a small team. Why it hurts: invariants reimplemented in code, consistency bugs, operational load per store. Way out: list access patterns and invariants first; consolidate on a relational store where it fits; keep specialised stores as derived projections fed by CDC.
 
-`DATA-AP-5` — **Naive table-as-queue.**
-- Symptoms: workers poll `SELECT … WHERE status='new' LIMIT 1` then `UPDATE`, without `SKIP LOCKED`; double processing; the jobs table grows forever and bloats.
-- Why it hurts: duplicate work, lock contention, vacuum pressure, no retry/backoff semantics.
-- Way out: `FOR UPDATE SKIP LOCKED` claims with lease timestamps and retention, or a proven library (River, graphile-worker, pg-boss), or a broker (MSG).
+`DATA-AP-5` — **Naive table-as-queue.** Symptoms: workers poll `SELECT … WHERE status='new' LIMIT 1` then `UPDATE`, without `SKIP LOCKED`; double processing; the jobs table grows forever and bloats. Why it hurts: duplicate work, lock contention, vacuum pressure, no retry/backoff semantics. Way out: `FOR UPDATE SKIP LOCKED` claims with lease timestamps and retention, or a proven library (River, graphile-worker, pg-boss), or a broker (MSG).
 
-`DATA-AP-6` — **Unbounded append-only tables with no lifecycle.**
-- Symptoms: `events`, `audit_log`, `outbox`, `sessions` with hundreds of millions of rows, `DELETE … WHERE created_at <` jobs that never finish.
-- Why it hurts: bloated indexes and backups, slow vacuum, retention/privacy violations.
-- Way out: time partitioning with partition drop, archive to object storage, retention policy per class (DATA-BP-20).
+`DATA-AP-6` — **Unbounded append-only tables with no lifecycle.** Symptoms: `events`, `audit_log`, `outbox`, `sessions` with hundreds of millions of rows, `DELETE … WHERE created_at <` jobs that never finish. Why it hurts: bloated indexes and backups, slow vacuum, retention/privacy violations. Way out: time partitioning with partition drop, archive to object storage, retention policy per class (DATA-BP-20).
 
-`DATA-AP-7` — **Lock-everything consistency.**
-- Symptoms: every request opens Serializable or takes `LOCK TABLE`/advisory global locks "to be safe"; heavy use of in-app mutexes around DB writes.
-- Why it hurts: throughput collapses under contention; the locks do not hold across instances anyway (CONC).
-- Way out: identify the specific invariant; use constraints, atomic statements, row locks or targeted Serializable with retries (DATA-BP-6…9).
+`DATA-AP-7` — **Lock-everything consistency.** Symptoms: every request opens Serializable or takes `LOCK TABLE`/advisory global locks "to be safe"; heavy use of in-app mutexes around DB writes. Why it hurts: throughput collapses under contention; the locks do not hold across instances anyway (CONC). Way out: identify the specific invariant; use constraints, atomic statements, row locks or targeted Serializable with retries (DATA-BP-6…9).
 
 ## Go / Node.js notes
 

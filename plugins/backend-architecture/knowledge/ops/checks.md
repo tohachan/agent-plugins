@@ -33,3 +33,4 @@ Bodies: `knowledge/ops/rules.md`, looked up by ID.
 
 - OPS-BAD-10 — Redundancy inconsistent with the agreed availability requirement
 - OPS-BAD-15 — Feature flags never removed
+- OPS-BP-13 — Configure autoscaling with sane bounds and a PodDisruptionBudget

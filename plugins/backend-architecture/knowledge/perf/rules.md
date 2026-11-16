@@ -76,37 +76,19 @@
 
 ## Anti-patterns
 
-`PERF-AP-1` — **Chatty service graph.**
-- Symptoms: one user request fans into dozens of sequential internal calls; traces look like staircases; latency is the sum of hops.
-- Why it hurts: latency adds up and tail latency compounds per hop (PERF-BP-4); every hop pays serialisation and connection overhead.
-- Way out: parallelise independent calls, add bulk/composite endpoints, move data next to the consumer (read models, SCALE-BP-15), or merge services split along the wrong boundary (ARCH).
+`PERF-AP-1` — **Chatty service graph.** Symptoms: one user request fans into dozens of sequential internal calls; traces look like staircases; latency is the sum of hops. Why it hurts: latency adds up and tail latency compounds per hop (PERF-BP-4); every hop pays serialisation and connection overhead. Way out: parallelise independent calls, add bulk/composite endpoints, move data next to the consumer (read models, SCALE-BP-15), or merge services split along the wrong boundary (ARCH).
 
-`PERF-AP-2` — **ORM-shaped data access on hot paths.**
-- Symptoms: lazy-loaded relations, `SELECT *` everywhere, hundreds of queries per request, entities serialised directly to JSON.
-- Why it hurts: hidden N+1, over-fetching, and serialisation of fields nobody needs.
-- Way out: explicit eager loading or hand-written queries for hot paths (sqlc in Go, Kysely/Drizzle in Node), DTO projections, query-count budgets (PERF-BP-20).
+`PERF-AP-2` — **ORM-shaped data access on hot paths.** Symptoms: lazy-loaded relations, `SELECT *` everywhere, hundreds of queries per request, entities serialised directly to JSON. Why it hurts: hidden N+1, over-fetching, and serialisation of fields nobody needs. Way out: explicit eager loading or hand-written queries for hot paths (sqlc in Go, Kysely/Drizzle in Node), DTO projections, query-count budgets (PERF-BP-20).
 
 `PERF-AP-3` — **See CACHE-AP-2 (canonical mechanism).** Measure the uncached query and failure path before adding a cache.
 
-`PERF-AP-4` — **Throughput benchmarks as the performance story.**
-- Symptoms: "handles 50k RPS" with no latency distribution, no data volume, closed-loop tool, generator on the same host.
-- Why it hurts: hides queueing and tail latency, the thing users feel; capacity plans built on it fail at peak.
-- Way out: open-model tests reporting latency percentiles at a fixed rate (PERF-BP-18), on production-like data.
+`PERF-AP-4` — **Throughput benchmarks as the performance story.** Symptoms: "handles 50k RPS" with no latency distribution, no data volume, closed-loop tool, generator on the same host. Why it hurts: hides queueing and tail latency, the thing users feel; capacity plans built on it fail at peak. Way out: open-model tests reporting latency percentiles at a fixed rate (PERF-BP-18), on production-like data.
 
-`PERF-AP-5` — **Rewrite for speed.**
-- Symptoms: proposal to port a service to Go/Rust "because it is slow", no profile attached; the slow part is the database or a downstream call.
-- Why it hurts: months of work, new bugs, unchanged latency.
-- Way out: profile and trace first (PERF-BP-1); move only proven CPU-bound hotspots to a worker pool or a dedicated service (PERF-BP-15, PERF-BP-19).
+`PERF-AP-5` — **Rewrite for speed.** Symptoms: proposal to port a service to Go/Rust "because it is slow", no profile attached; the slow part is the database or a downstream call. Why it hurts: months of work, new bugs, unchanged latency. Way out: profile and trace first (PERF-BP-1); move only proven CPU-bound hotspots to a worker pool or a dedicated service (PERF-BP-15, PERF-BP-19).
 
-`PERF-AP-6` — **Kitchen-sink request path.**
-- Symptoms: the handler validates, writes, sends emails, calls analytics, recomputes aggregates and renders a large response in one synchronous flow.
-- Why it hurts: latency and failure rate are the sum of everything; the critical path cannot be optimised in isolation.
-- Way out: identify the minimum work the response needs; defer the rest (SCALE-BP-12) and precompute the aggregates (materialised views, denormalised columns updated on write).
+`PERF-AP-6` — **Kitchen-sink request path.** Symptoms: the handler validates, writes, sends emails, calls analytics, recomputes aggregates and renders a large response in one synchronous flow. Why it hurts: latency and failure rate are the sum of everything; the critical path cannot be optimised in isolation. Way out: identify the minimum work the response needs; defer the rest (SCALE-BP-12) and precompute the aggregates (materialised views, denormalised columns updated on write).
 
-`PERF-AP-7` — **Tuning knobs without a feedback loop.**
-- Symptoms: copied `GOGC`, pool sizes, `--max-old-space-size`, thread pool sizes and timeouts with no comments or measurements; nobody knows why the values are what they are.
-- Why it hurts: settings fight each other (e.g. heap flag above the container limit) and silently go stale.
-- Way out: document each knob's rationale next to it, derive from measurements (PERF-BP-5, PERF-BP-14), re-validate in the regression suite (PERF-BP-20).
+`PERF-AP-7` — **Tuning knobs without a feedback loop.** Symptoms: copied `GOGC`, pool sizes, `--max-old-space-size`, thread pool sizes and timeouts with no comments or measurements; nobody knows why the values are what they are. Why it hurts: settings fight each other (e.g. heap flag above the container limit) and silently go stale. Way out: document each knob's rationale next to it, derive from measurements (PERF-BP-5, PERF-BP-14), re-validate in the regression suite (PERF-BP-20).
 
 ## Go / Node.js notes
 
