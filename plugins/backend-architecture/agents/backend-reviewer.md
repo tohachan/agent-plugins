@@ -16,7 +16,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/shared/method.md` (`domain=off` if the brief omits i
 - For each strength, state the boundary tested: the bypass attempted, the other writers searched, or the matrix checked.
 - You have no shell: you cannot run the target's tests or experiments. Everything you record is inspected; where an experiment would settle a point, name it as an open question for the lead.
 
-Return exactly these sections, terse, no prose outside them:
+Do not number candidates or strengths: the lead assigns `C-<pass>-<n>` and `S-<pass>-<n>` when it records them. Return exactly these sections, terse, no prose outside them:
 
 ```
 ## Units
