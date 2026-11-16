@@ -77,7 +77,7 @@ def coverage_inventory(report, require, strings):
 def known_rules():
     found = set()
     for p in (ROOT / 'knowledge').glob('*/*.md'):
-        found.update(re.findall(r'^`([A-Z]+-(?:BP|BAD|AP)-\d+)`|^\| `?([A-Z]+-CHK-\d+)`? \|', p.read_text(), re.M))
+        found.update(re.findall(r'^`([A-Z]+-(?:BP|BAD|AP)-\d+)`|^\| ([A-Z]+-CHK-\d+) \|', p.read_text(), re.M))
     return {x for pair in found for x in pair if x}
 
 def load_examples(path):
