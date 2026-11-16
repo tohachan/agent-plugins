@@ -76,7 +76,7 @@
 
 `OPS-BAD-15` — **Feature flags never removed.** Dead branches, combinatorial test surface, accidental reactivation of old code. → Instead: flags with owner and expiry date, removal ticket created with the flag; report stale flags in CI (OPS-BP-6, OPS-BP-7).
 
-`OPS-BAD-16` — **Deploying on Friday evening without on-call coverage or automated rollback.** Regressions sit unnoticed for days. → Instead: progressive delivery with auto-abort and staffed windows (OPS-BP-6, OPS-BP-17).
+`OPS-BAD-16` — **Deploying without staffed coverage or automated rollback** (for example a change landing right before a weekend or holiday with nobody on call). Regressions sit unnoticed until users report them. → Instead: progressive delivery with auto-abort and staffed windows (OPS-BP-6, OPS-BP-17).
 
 ## Anti-patterns
 

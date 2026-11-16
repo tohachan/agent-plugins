@@ -62,7 +62,7 @@
 
 `PERF-BAD-8` — **Synchronous or CPU-heavy work on the Node event loop** (`fs.readFileSync`, `crypto.pbkdf2Sync`, `zlib.gzipSync`, big `JSON.parse`, `bcrypt.hashSync`). Every concurrent request stalls. → Instead: PERF-BP-15.
 
-`PERF-BAD-9` — **One global mutex around hot shared state.** Throughput flatlines as cores grow; mutex profile hot. → Instead: shard the lock/map, `sync.RWMutex` for read-mostly, atomics, or per-goroutine state merged later (correctness → CONC).
+`PERF-BAD-9` — **One global mutex around hot shared state.** Throughput flatlines as cores grow; mutex profile hot. → Instead: shard the lock/map, `sync.RWMutex` for read-mostly only after a benchmark shows read contention (CONC-BP-4), atomics, or per-goroutine state merged later (correctness → CONC).
 
 `PERF-BAD-10` — **Logging at debug level, or logging full request/response bodies, in production hot paths.** CPU, allocation and log-bill blowups, plus PII risk (SEC). → Instead: PERF-BP-16.
 
