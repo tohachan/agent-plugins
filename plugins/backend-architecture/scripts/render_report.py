@@ -19,7 +19,7 @@ NAMES = {'API': 'API design', 'DATA': 'Data storage & transactions', 'CACHE': 'C
          'CONC': 'Concurrency', 'IDEM': 'Idempotency & consistency', 'RES': 'Resilience', 'SCALE': 'Scalability',
          'PERF': 'Performance', 'SEC': 'Security', 'OBS': 'Observability', 'ARCH': 'Architecture styles & boundaries',
          'OPS': 'Delivery & operations'}
-SECTIONS = ('header', 'scorecard', 'coverage', 'items', 'plan', 'strengths', 'decisions', 'validation', 'assumptions', 'risks', 'not_examined')
+SECTIONS = ('header', 'scorecard', 'coverage', 'items', 'plan', 'strengths', 'decisions', 'validation', 'assumptions', 'risks', 'not_examined', 'prior')
 REQUIRED = {'full': ('header', 'scorecard', 'coverage', 'items', 'plan'), 'triage': ('header', 'items', 'not_examined'),
             'design': ('header', 'assumptions', 'decisions', 'risks', 'validation')}
 
@@ -30,6 +30,7 @@ def required(r):
     need = list(REQUIRED[kind(r)])
     for name in ('validation', 'strengths'):
         if r.get(name) and name not in need: need.append(name)
+    if r.get('provenance', {}).get('prior'): need.append('prior')
     return need
 SCRIPT = Path(__file__).resolve()
 
@@ -102,9 +103,6 @@ def coverage(r):
     else: parts.append('**Invariants:** ' + cell(ci.get('invariants_reason')))
     parts.append('**Gaps:** ' + ('; '.join(ci['gaps']) if ci.get('gaps') else 'none'))
     if ci.get('index_recommendation'): parts.append('**Index recommendation:** ' + ci['index_recommendation'])
-    if r.get('prior_reports'):
-        parts.append(table(['Prior source', 'Item', 'Prior severity', 'Verdict', 'Evidence'],
-                           [[p['source'], p['item'], p.get('prior_severity'), p['verdict'], p['evidence']] for p in r['prior_reports']]))
     return '\n\n'.join(parts)
 
 def items(r):
@@ -155,6 +153,25 @@ def risks(r):
                    f"- **Scenario:** {x['scenario']}\n- **Fix:** {x['fix']}")
     return '\n\n'.join(out)
 
+def verdict_text(x):
+    return f"fixed at {x['fixed_at']}" if x['verdict'] == 'fixed' else x['verdict'].replace('_', ' ')
+
+def prior(r):
+    pin = r['provenance']['prior']
+    out = [f"**Prior {pin['mode']}:** {pin['source']} · revision {pin['revision']} · {pin['date']}"]
+    if r['mode'] == 'audit' and pin['mode'] == 'audit':
+        known = {x['fingerprint'] for x in r['prior_verdicts']}
+        out.append(table(['Prior item', 'Title', 'Verdict', 'Evidence / note'],
+                         [[x['item'], x['title'], verdict_text(x), [*x.get('evidence', []), *([x['note']] if x.get('note') else [])]] for x in r['prior_verdicts']]))
+        new = [i['id'] for i in r['items'] if i['fingerprint'] not in known]
+        out.append('**New in this audit:** ' + (', '.join(new) if new else 'none'))
+    elif r['mode'] == 'audit':
+        out.append(table(['Prior ref', 'Status', 'Evidence / note'], [[x['ref'], x['status'], [*x.get('evidence', []), *([x['note']] if x.get('note') else [])]] for x in r['prior_checks']]))
+    else:
+        closed = {f: d['id'] for d in r['decisions'] for f in d.get('closes', [])}
+        out.append(table(['From finding', 'Requirement', 'Closed by'], [[x['from'], x['requirement'], closed.get(x['from'], 'open')] for x in r['requirements']]))
+    return '\n\n'.join(out)
+
 def not_examined(r):
     return '\n'.join('- ' + x for x in r['not_examined'])
 
@@ -194,12 +211,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('report', type=Path)
     ap.add_argument('--evidence-root', type=Path)
+    ap.add_argument('--prior', type=Path, help='the prior report, to check that the verdicts/requirements/checks cover it')
     args = ap.parse_args()
     try:
         report = load_report(args.report)
         before = copy.deepcopy(report)
         derive(report)
-        errors = validate(report, args.evidence_root)
+        errors = validate(report, args.evidence_root, load_report(args.prior) if args.prior else None)
         if not errors: errors = render_errors(report)
         if not errors:
             text, errors = render(args.report.read_text(), report)

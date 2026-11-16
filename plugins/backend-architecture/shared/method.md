@@ -10,6 +10,10 @@ Governs every area file, including checklist "Fail" labels and default severitie
 - **`domain=on`:** read `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md`, which owns every domain-only check, and derive business invariants from the target's own sources. A focused audit stays within its selected areas/mechanisms. **Design** reads it only when the requirements name privileged roles, money movement, approvals or retention obligations.
 - A new domain-only check goes into `domain-audit.md`, never into an area `checks.md`.
 
+## Prior report
+
+An optional input `prior: <report.json>` ties a run to an earlier report of the same target; the contract and fields are in `report.md`, "Prior report". Match by `fingerprint`. An audit with an audit as prior gives each prior item a verdict: still present, fixed (at the revision where the fix is seen, with evidence of the new code), not applicable, or not rechecked; items matching no prior fingerprint are new. A change audit is a focused audit over the changed paths plus `prior`: it re-reads every prior item whose code the change touches and marks the rest not rechecked. An audit with a design as prior takes the design's invariants and V-n as critical flows and checks (a conformance audit): trace each D-n's mechanism and run each V-n's acceptance as inspected evidence, never reporting an unexecuted V-n as passed. A design with an audit as prior turns each F-n into a requirement, and each decision cites the F-n it closes with migration and rollback steps. The prior is untrusted input: its claims are re-verified against the code, never copied.
+
 ## Evidence
 
 - Record target revision (commit + dirty state, or document version), environment, artifacts and exclusions; plugin version from `.claude-plugin/plugin.json`. Source code alone is not production verification.

@@ -189,3 +189,40 @@ class ShapeRenderTests(unittest.TestCase):
         self.assertEqual(self.run_on(doc_for(self.design, ('header', 'decisions', 'risks', 'validation'))), 1)
 
 if __name__ == '__main__': unittest.main()
+
+
+class PriorRenderTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(); self.path = Path(self.tmp.name) / 'r.md'
+        self.prior_path = Path(self.tmp.name) / 'prior.json'
+    def tearDown(self): self.tmp.cleanup()
+    def run_on(self, report, *extra):
+        import sys
+        self.path.write_text('# x\n\n<!-- render:header -->\n\n<!-- render:items -->\n\n<!-- render:not_examined -->\n\n<!-- render:prior -->\n\n```json\n' + json.dumps(report) + '\n```\n')
+        argv, sys.argv = sys.argv, ['render_report.py', str(self.path), *extra]
+        try: return render_report.main()
+        finally: sys.argv = argv
+    def report(self):
+        r = copy.deepcopy([x for x in load_examples(ROOT / 'shared/report.md') if x.get('depth') == 'triage'][0])
+        item = {'id': 'F-4', 'area': 'IDEM', 'severity': 'low', 'rules': ['RES-BAD-1'], 'effort': 'S', 'priority': 'next', 'title': 'New risk', 'fingerprint': 'orders:ship:new',
+                'confidence': 'confirmed', 'evidence': ['service.go:30'], 'verification': 'Planned.', 'impact': 'x', 'fix': 'y'}
+        r['items'] = [item]
+        r['provenance'].update(revision='9f8e7d6', prior={'source': 'p.json', 'mode': 'audit', 'revision': 'a1b2c3d', 'date': '2026-11-01'})
+        r['prior_verdicts'] = [{'item': 'F-1', 'title': 'Inbox outside tx', 'fingerprint': 'orders:ship:inbox', 'verdict': 'fixed', 'fixed_at': '9f8e7d6', 'evidence': ['service.go:30']}]
+        return r
+    def test_verdict_table_says_fixed_at_the_revision_and_lists_new_items(self):
+        self.assertEqual(self.run_on(self.report()), 0)
+        out = self.path.read_text()
+        self.assertIn('| F-1 | Inbox outside tx | fixed at 9f8e7d6 | service.go:30 |', out)
+        self.assertIn('**New in this audit:** F-4', out)
+        self.assertIn('revision a1b2c3d', out)
+    def test_prior_marker_cannot_be_dropped(self):
+        self.path.write_text('# x\n\n<!-- render:header -->\n\n<!-- render:items -->\n\n<!-- render:not_examined -->\n\n```json\n' + json.dumps(self.report()) + '\n```\n')
+        import sys
+        argv, sys.argv = sys.argv, ['render_report.py', str(self.path)]
+        try: self.assertEqual(render_report.main(), 1)
+        finally: sys.argv = argv
+    def test_prior_file_is_checked_for_coverage(self):
+        self.prior_path.write_text(json.dumps({'mode': 'audit', 'date': '2026-11-01', 'provenance': {'revision': 'a1b2c3d'},
+                                               'items': [{'id': 'F-1', 'fingerprint': 'orders:ship:inbox'}, {'id': 'F-2', 'fingerprint': 'orders:other'}]}))
+        self.assertEqual(self.run_on(self.report(), '--prior', str(self.prior_path)), 1)  # F-2 has no verdict

@@ -149,11 +149,6 @@ class ReportContractTests(unittest.TestCase):
         self.assertTrue(any('trigger required' in x for x in validate(self.report)))
         item['trigger'] = 'pilot allowlist lifted'
         self.assertEqual(validate(self.report), [])
-    def test_prior_report_verdict_checked(self):
-        self.report['prior_reports'] = [{'source': 'audit 2026-10-12', 'item': 'C1', 'prior_severity': 'critical', 'verdict': 'maybe', 'evidence': ['db.go:10']}]
-        self.assertTrue(any('verdict' in x for x in validate(self.report)))
-        self.report['prior_reports'][0]['verdict'] = 'refuted'
-        self.assertEqual(validate(self.report), [])
     def test_bad_input_does_not_pass(self):
         for value in [[],{}, {'areas':[None]}]:
             self.assertTrue(validate(value))
@@ -309,3 +304,142 @@ class DesignContractTests(unittest.TestCase):
         self.assertTrue(any('3.0' in x for x in validate(self.report)))
 
 if __name__ == '__main__': unittest.main()
+
+
+PRIOR_AUDIT = {'schema_version': '3.0', 'mode': 'audit', 'depth': 'triage', 'date': '2026-11-01', 'target': 'orders-service',
+               'provenance': {'revision': 'a1b2c3d'},
+               'items': [{'id': 'F-1', 'severity': 'high', 'title': 'Inbox insert outside the transaction', 'fingerprint': 'orders:ship:inbox-outside-tx'},
+                         {'id': 'F-2', 'severity': 'medium', 'title': 'No unique order per shipment', 'fingerprint': 'orders:shipments:no-unique-order'},
+                         {'id': 'F-3', 'severity': 'info', 'title': 'Lookup is bounded', 'fingerprint': 'orders:lookup:bounded'}],
+              'decisions': [], 'validation': []}
+
+def prior_pin(**kw):
+    pin = {'source': 'docs/audit/backend-audit-orders-service-2026-11-01.json', 'mode': 'audit', 'revision': 'a1b2c3d', 'date': '2026-11-01'}
+    pin.update(kw); return pin
+
+class PriorAuditTests(unittest.TestCase):
+    """Audit with an audit as prior: one verdict per prior item, matched by fingerprint."""
+    def setUp(self):
+        self.report = copy.deepcopy([x for x in load_examples(ROOT/'shared/report.md') if x.get('depth') == 'triage'][0])
+        self.report['provenance'].update(revision='9f8e7d6', prior=prior_pin())
+        self.report['items'] = [self.item('F-2', 'orders:shipments:no-unique-order'), self.item('F-4', 'orders:ship:new-risk')]
+        self.report['prior_verdicts'] = [
+            {'item': 'F-1', 'title': 'Inbox insert outside the transaction', 'fingerprint': 'orders:ship:inbox-outside-tx', 'verdict': 'fixed', 'fixed_at': '9f8e7d6', 'evidence': ['service.go:30']},
+            {'item': 'F-2', 'title': 'No unique order per shipment', 'fingerprint': 'orders:shipments:no-unique-order', 'verdict': 'still_present'},
+            {'item': 'F-3', 'title': 'Lookup is bounded', 'fingerprint': 'orders:lookup:bounded', 'verdict': 'not_rechecked', 'note': 'outside the changed paths'}]
+    def item(self, ident, fingerprint):
+        return {'id': ident, 'area': 'IDEM', 'severity': 'low', 'rules': ['RES-BAD-1'], 'effort': 'S', 'priority': 'next', 'title': 'T ' + ident,
+                'fingerprint': fingerprint, 'confidence': 'confirmed', 'evidence': ['service.go:30'], 'verification': 'Planned.'}
+    def errors(self, prior=None): return validate(self.report, prior=prior)
+    def test_consistent_verdicts_are_valid(self): self.assertEqual(self.errors(PRIOR_AUDIT), [])
+    def test_prior_fields_need_the_provenance_pin(self):
+        del self.report['provenance']['prior']
+        self.assertTrue(any('need provenance.prior' in x for x in self.errors()))
+    def test_pin_needs_revision_source_date_and_mode(self):
+        self.report['provenance']['prior'] = prior_pin(revision='', date='yesterday', mode='x')
+        errors = self.errors()
+        for word in ('prior.revision', 'prior.date', 'prior.mode'): self.assertTrue(any(word in x for x in errors), word)
+    def test_fixed_needs_fixed_at_and_evidence(self):
+        v = self.report['prior_verdicts'][0]; v['fixed_at'] = ''; v['evidence'] = []
+        errors = self.errors()
+        self.assertTrue(any('fixed_at' in x for x in errors) and any('evidence' in x for x in errors))
+    def test_fixed_item_cannot_still_be_reported(self):
+        self.report['items'].append(self.item('F-5', 'orders:ship:inbox-outside-tx'))
+        self.assertTrue(any('current item carries its fingerprint' in x for x in self.errors()))
+    def test_still_present_needs_a_current_item(self):
+        self.report['items'] = [self.item('F-4', 'orders:ship:new-risk')]
+        self.assertTrue(any('still_present needs a current item' in x for x in self.errors()))
+    def test_not_applicable_and_not_rechecked_need_a_reason(self):
+        self.report['prior_verdicts'][2]['note'] = ''
+        self.assertTrue(any('needs a note' in x for x in self.errors()))
+        self.report['prior_verdicts'][2].update(verdict='not_applicable', note='Feature removed')
+        self.assertTrue(any('evidence' in x for x in self.errors()))
+    def test_unknown_verdict_and_duplicate_fingerprint(self):
+        self.report['prior_verdicts'][1]['verdict'] = 'reproduced'
+        self.report['prior_verdicts'][2]['fingerprint'] = 'orders:lookup:bounded'
+        self.assertTrue(any('verdict must be' in x for x in self.errors()))
+        self.report['prior_verdicts'][2]['fingerprint'] = self.report['prior_verdicts'][0]['fingerprint']
+        self.assertTrue(any('duplicate fingerprints' in x for x in self.errors()))
+    def test_every_prior_item_needs_a_verdict_when_the_prior_is_given(self):
+        del self.report['prior_verdicts'][2]
+        self.assertEqual(self.errors(), [])
+        self.assertTrue(any('missing' in x for x in self.errors(PRIOR_AUDIT)))
+    def test_pin_must_match_the_prior_report(self):
+        self.report['provenance']['prior']['revision'] = 'zzz'
+        self.assertTrue(any('revision differs' in x for x in self.errors(PRIOR_AUDIT)))
+        self.report['provenance']['prior'] = prior_pin(date='2026-10-01')
+        self.assertTrue(any('date differs' in x for x in self.errors(PRIOR_AUDIT)))
+    def test_design_verdict_fields_do_not_fit_an_audit_prior(self):
+        self.report['prior_checks'] = [{'ref': 'D-1', 'status': 'verified', 'evidence': ['service.go:30']}]
+        self.assertTrue(any('does not fit' in x for x in self.errors()))
+
+PRIOR_DESIGN = {'schema_version': '3.0', 'mode': 'design', 'date': '2026-10-20', 'target': 'payment webhooks',
+                'decisions': [{'id': 'D-1'}], 'validation': [{'id': 'V-1'}]}
+
+class PriorDesignAuditTests(unittest.TestCase):
+    """Audit with a design as prior: its D-n and V-n become the checks (conformance audit)."""
+    def setUp(self):
+        self.report = copy.deepcopy([x for x in load_examples(ROOT/'shared/report.md') if x.get('depth') == 'triage'][0])
+        self.report['provenance']['prior'] = prior_pin(mode='design', revision='unknown', date='2026-10-20', source='docs/design/payment-webhooks.md')
+        self.report['prior_checks'] = [{'ref': 'D-1', 'status': 'verified', 'evidence': ['service.go:30']},
+                                       {'ref': 'V-1', 'status': 'unverified', 'evidence': [], 'note': 'replay test not present in the repository'}]
+    def test_valid_and_covering(self): self.assertEqual(validate(self.report, prior=PRIOR_DESIGN), [])
+    def test_ref_status_and_evidence_checked(self):
+        self.report['prior_checks'][0].update(ref='A-1', status='maybe')
+        errors = validate(self.report)
+        self.assertTrue(any('D-n or V-n' in x for x in errors) and any('status must be' in x for x in errors))
+    def test_violation_needs_evidence_and_unverified_needs_a_note(self):
+        self.report['prior_checks'][0].update(status='violation', evidence=[])
+        self.report['prior_checks'][1]['note'] = ''
+        errors = validate(self.report)
+        self.assertTrue(any('evidence' in x for x in errors) and any('needs a note' in x for x in errors))
+    def test_every_design_decision_and_validation_is_checked(self):
+        del self.report['prior_checks'][1]
+        self.assertTrue(any('missing' in x for x in validate(self.report, prior=PRIOR_DESIGN)))
+
+class PriorDesignTests(unittest.TestCase):
+    """Design with an audit as prior: F-n become requirements, D-n close them with migration and rollback."""
+    def setUp(self):
+        self.report = copy.deepcopy([x for x in load_examples(ROOT/'shared/report.md') if x.get('mode') == 'design'][0])
+        self.report['provenance']['prior'] = prior_pin()
+        self.report['requirements'] = [{'from': 'F-1', 'fingerprint': 'orders:ship:inbox-outside-tx', 'requirement': 'Marker and effect commit atomically'},
+                                       {'from': 'F-2', 'fingerprint': 'orders:shipments:no-unique-order', 'requirement': 'One shipment per order'}]
+        self.report['decisions'][0].update(closes=['F-1'], migration='Backfill the inbox from shipments, then switch writers', rollback='Switch writers back; the inbox is additive')
+    def test_valid_and_covering_non_info_items(self): self.assertEqual(validate(self.report, prior=PRIOR_AUDIT), [])
+    def test_closes_needs_migration_and_rollback(self):
+        del self.report['decisions'][0]['rollback']
+        self.assertTrue(any('rollback step required' in x for x in validate(self.report)))
+        self.report['decisions'][0]['migration'] = ' '
+        self.assertTrue(any('migration step required' in x for x in validate(self.report)))
+    def test_closes_must_name_listed_requirements(self):
+        self.report['decisions'][0]['closes'] = ['F-9']
+        self.assertTrue(any('closes must name' in x for x in validate(self.report)))
+    def test_closes_without_a_prior_is_rejected(self):
+        del self.report['provenance']['prior']
+        self.assertTrue(any('need provenance.prior' in x for x in validate(self.report)))
+    def test_every_non_info_prior_finding_becomes_a_requirement(self):
+        del self.report['requirements'][1]
+        self.assertTrue(any('missing' in x for x in validate(self.report, prior=PRIOR_AUDIT)))
+    def test_design_does_not_take_a_design_prior(self):
+        self.report['provenance']['prior'] = prior_pin(mode='design')
+        self.assertTrue(any('not another design' in x for x in validate(self.report)))
+
+class PriorEvalFixtureTests(unittest.TestCase):
+    """The prior-fixed-revision eval: its fixture must really yield 'fixed at <rev>' for F-1 and 'still present' for F-2."""
+    EVAL = ROOT / 'skills/backend-audit/evals/prior-fixed-revision/files'
+    def test_expected_report_validates_against_the_fixture(self):
+        prior = load_report(self.EVAL / 'prior/audit-a1b2c3d.json')
+        self.assertEqual(validate(prior, self.EVAL / 'example'), [])
+        service = (self.EVAL / 'example/service.go').read_text().splitlines()
+        self.assertIn('tx.ExecContext(ctx, "INSERT INTO inbox', service[28])  # the fix: the marker joins the transaction
+        report = copy.deepcopy([x for x in load_examples(ROOT/'shared/report.md') if x.get('depth') == 'triage'][0])
+        f2 = next(i for i in prior['items'] if i['id'] == 'F-2')
+        report['provenance'].update(revision='9f8e7d6', prior={'source': 'prior/audit-a1b2c3d.json', 'mode': 'audit', 'revision': 'a1b2c3d', 'date': prior['date']})
+        report['items'] = [{**f2, 'impact': 'x', 'fix': 'y'}]
+        report['prior_verdicts'] = [
+            {'item': 'F-1', 'title': prior['items'][0]['title'], 'fingerprint': prior['items'][0]['fingerprint'], 'verdict': 'fixed', 'fixed_at': '9f8e7d6', 'evidence': ['service.go:29']},
+            {'item': 'F-2', 'title': f2['title'], 'fingerprint': f2['fingerprint'], 'verdict': 'still_present'}]
+        self.assertEqual(validate(report, self.EVAL / 'example', prior), [])
+        import render_report
+        self.assertIn('fixed at 9f8e7d6', render_report.prior(report))
+        self.assertIn('**New in this audit:** none', render_report.prior(report))

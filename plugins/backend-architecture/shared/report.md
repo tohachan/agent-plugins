@@ -61,6 +61,18 @@ Judge by realistic reachability, impact and blast radius, not the rule's default
 
 One root cause per item. `priority` (`now|next|later`, required except on Info items) says when to act; optional `depends_on` lists the F-ids that must land first. The rendered Plan table is built from them, ordered Now, Next, Later and by severity, with each item's `verification` as its acceptance gate; migration, mixed-version and rollback gates belong in that verification. Preserve F-n/R-n IDs of a prior report for recurring issues; never renumber. `fingerprint` = target + logical component/operation + root cause, independent of line numbers and severity. Each item states realistic impact (scenario, violated requirement/invariant, blast radius), a minimal fix, and verification (executed or planned). Design risks (R-n) cite the proposed element, the failure window and, where one applies, the assumption they rest on (A-n). Decisions record options, the choice, why (requirement), trade-off, an observable revisit threshold and rules; link critical ones to validation rows.
 
+## Prior report (optional input)
+
+`prior: <report.json>` (a JSON report, or a rendered report whose closing JSON block is read) lets a run build on an earlier one; the earlier report's revision is the only thing that must differ. The run records the prior in `provenance.prior`: `{source, mode: audit|design, revision, date}`. `revision` is the prior's own `provenance.revision` (`unknown` for a design, which has none), `date` its `date`. Without `provenance.prior`, the fields below are rejected. Matching is by `fingerprint` (exact string), never by F-n or line number; a prior item with no exact counterpart is judged by re-reading its evidence, and its verdict says so in `note`. Render and validate with `--prior <the same file>`: the validator then checks that the verdicts, requirements or checks cover the prior exactly, and that the pin matches it.
+
+| Run | Prior | Fields | Rule |
+| --- | --- | --- | --- |
+| audit | audit | `prior_verdicts`: one `{item, title, fingerprint, verdict, fixed_at?, evidence?, note?}` per prior item | `verdict` is `still_present` (a current item carries the fingerprint), `fixed` (needs `fixed_at`, the revision where the fix is seen, and `file:line` evidence of the new code; no current item may carry the fingerprint), `not_applicable` (feature or code gone: `note` and evidence) or `not_rechecked` (outside this audit's scope, as in a change audit: `note`; it is never counted as fixed). A current item whose fingerprint is in no verdict is **new**; the renderer lists them. |
+| audit | design | `prior_checks`: one `{ref, status, evidence, note?}` per prior D-n and V-n | `status` is a ledger state; `verified` and `violation` need evidence, `unverified` and `not_applicable` need a `note`. The design's invariants and V-n are the audit's critical flows and checks; a `violation` is also an ordinary item. |
+| design | audit | `requirements`: `{from: F-n, fingerprint, requirement}` per non-Info prior item; a decision's `closes: [F-n]` with `migration` and `rollback` | Every non-Info F-n is a requirement; a D-n that closes F-n names them and states how to migrate to it and how to roll back. A requirement no decision closes renders as `open`. |
+
+A design never takes a design as prior. A **change audit** is a focused audit over the changed paths with the earlier audit as `prior`: findings outside the changed paths are `not_rechecked`, and the revision pair is `provenance.prior.revision` and `provenance.revision`.
+
 ## Writing the report: data once, rendered tables
 
 Write every table, item, plan row and strength **only in the closing JSON**; never type them in Markdown. In a full audit give the judgments only (areas' `status`, `score`, `confidence`, `coverage`, `evidence`, `unknowns`; items; `overall.confidence`, `unknowns`, `noted_unknowns`; validation): the renderer **derives** and writes back into the JSON the area `counts`, `overall.score`, `score_inputs`, `denominator`, `capped`, `provisional`, `blockers` (every High/Critical item, plus any ids you add for an unmet mandatory requirement) and `readiness`, so leave them out (the examples below show them filled, as rendered). Put render markers where they belong and run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py <report> [--evidence-root <target repo root>]` (the plugin's own script by absolute path, whatever the working directory). It fills the derived fields, validates the JSON, then replaces each marker with the rendered block; re-running is idempotent and nothing is written while validation fails. It rewrites the file it is given, so render a draft in a writable scratch directory and copy the result to its destination; a read-only target never blocks the report. **At most 3 render runs:** fix the JSON each time; if the third still fails, deliver the draft with `validation failed: <the errors>` in place of the `Schema validation:` line and say so in the reply.
@@ -107,7 +119,7 @@ Material unknowns, consequences, evidence needed.
 (closing JSON block)
 ```
 
-Required markers: header, scorecard, coverage, items, plan (plus `validation` and `strengths` when the JSON has entries; omit the Strengths section otherwise). Compact form for narrow requests: keep those markers, fold Context into a short paragraph, 400–800 words excluding JSON for one or two mechanisms; report "Not assessed" rather than manufacture a number.
+Required markers: header, scorecard, coverage, items, plan (plus `validation` and `strengths` when the JSON has entries, and `prior` when `provenance.prior` is set; omit the Strengths section otherwise). Compact form for narrow requests: keep those markers, fold Context into a short paragraph, 400–800 words excluding JSON for one or two mechanisms; report "Not assessed" rather than manufacture a number.
 
 ### Triage audit layout and JSON
 
@@ -132,7 +144,7 @@ The 3–5 highest-impact flows traced, each with file:line.
 (closing JSON block)
 ```
 
-Required markers: header, items, not_examined (plus `validation` and `strengths` when the JSON has entries; `plan` is optional, each item block already shows its priority). No scorecard, readiness or coverage inventory is needed; if `areas`, `overall` or `coverage_inventory` are present they are validated as in a full audit. Top 3–5 risks, ordered by severity; a healthy system yields few or no findings and says so.
+Required markers: header, items, not_examined (plus `validation` and `strengths` when the JSON has entries, and `prior` when `provenance.prior` is set; `plan` is optional, each item block already shows its priority). No scorecard, readiness or coverage inventory is needed; if `areas`, `overall` or `coverage_inventory` are present they are validated as in a full audit. Top 3–5 risks, ordered by severity; a healthy system yields few or no findings and says so.
 
 ```json
 {
@@ -188,7 +200,7 @@ Migration, mixed-version and rollback gates.
 (closing JSON block)
 ```
 
-Required markers: header, assumptions, decisions, risks, validation. Focused pattern design: relevant sections only, one concise validation scenario. No scorecard, readiness or coverage inventory; domain requirements enter as assumptions and decisions.
+Required markers: header, assumptions, decisions, risks, validation (plus `prior` when `provenance.prior` is set). Focused pattern design: relevant sections only, one concise validation scenario. No scorecard, readiness or coverage inventory; domain requirements enter as assumptions and decisions.
 
 ```json
 {
@@ -214,7 +226,7 @@ Required markers: header, assumptions, decisions, risks, validation. Focused pat
 
 - `provenance`: `plugin_version` nonempty, `scope` area IDs considered, optional `models` as in a full audit.
 - `assumptions` (nonempty): `{id: A-n, statement, threshold, check}` — the claim, the value at which the choice changes, how to verify it.
-- `decisions` (nonempty): `{id: D-n, title, choice, options, why, tradeoff, revisit, rules}`, optional `assumptions` (A-n) and `validation` (V-n) references. `rules` are known rule IDs.
+- `decisions` (nonempty): `{id: D-n, title, choice, options, why, tradeoff, revisit, rules}`, optional `assumptions` (A-n) and `validation` (V-n) references, and with an audit prior `closes`, `migration`, `rollback`. `rules` are known rule IDs.
 - `risks` (may be empty): `{id: R-n, title, severity, rules, element, scenario, fix}`, optional `assumptions`; no file evidence is required for a proposal.
 - `validation` (nonempty): `{id: V-n, requirement, method, acceptance, status, evidence}`; `planned` until run; `passed`/`failed` need result evidence.
 
@@ -255,7 +267,7 @@ This focused example includes domain review (`--domain on`); for the default tec
 Field rules (the validator enforces them; it checks contract consistency, not architectural truth). The rest of this section is the **full audit** contract; triage and design follow their own sections.
 
 - **Top level:** `schema_version` "3.0"; `mode` `audit|design`; audit also `depth` `full|triage`; `target`; `date`.
-- **Provenance:** `revision`, `environment`, `plugin_version` nonempty; `rubric_version` "2.0"; `dirty` bool/null; `scope` equals the area IDs; `exclusions` string array. Optional `models`: `[{role, model, effort?}]`, one row per role that ran (lead, each reviewer, each verifier) with the model the harness reported (`unknown` when it did not say); `effort` is what was requested, not a measurement.
+- **Provenance:** `revision`, `environment`, `plugin_version` nonempty; optional `prior` (above); `rubric_version` "2.0"; `dirty` bool/null; `scope` equals the area IDs; `exclusions` string array. Optional `models`: `[{role, model, effort?}]`, one row per role that ran (lead, each reviewer, each verifier) with the model the harness reported (`unknown` when it did not say); `effort` is what was requested, not a measurement.
 - **Areas:** `coverage` has exactly the four keys `verified`, `violation`, `unverified`, `not_applicable`, non-negative integers with a nonzero sum, and counts selected ledger entries (not every possible check, not repository-wide completeness); assessed has no unverified entries and at least one verified/violation; partial has unverified entries, at least one verified/violation and nonempty `unknowns`, a score ≤ 7 and confidence below high; unverified has unverified entries and nonempty `unknowns`; N/A has `null` counts, a `reason` and no items. Every area with a score and confidence (assessed, partial) also has a nonempty `evidence` array. Score caps in the primary area: Critical ≤ 3, High ≤ 5, Medium ≤ 7, Low ≤ 9. `counts` (derived) exclude Info and count each item once in its primary area.
 - **Rendering fields:** items add `impact` and `fix` (nonempty strings) and optional `also_areas` (area IDs); areas add optional `note` (the scorecard's key point); decisions add `options`, `why`, `tradeoff`, `revisit`. The renderer requires them; the validator ignores them.
 - **Items:** `{id, area, severity, rules, effort, priority, title, fingerprint, confidence, evidence, verification}`; `priority` `now|next|later` (optional on Info items); optional `depends_on` (other F-ids of the report, no cycles); duplicate `fingerprint`s are rejected; `severity` lowercase `critical|high|medium|low|info`; `confidence` `confirmed|likely`; `effort` `S|M|L`; `rules` and `evidence` nonempty string arrays of known rule IDs (BP/BAD/AP; a CHK check ID is not a rule) and `file:line[-line]` or document citations; `verification` names the check, acceptance and executed/planned status (may reference a V-n). Optional `severity_if` + `trigger`. IDs `F-n`.
@@ -267,5 +279,5 @@ Field rules (the validator enforces them; it checks contract consistency, not ar
   - `invariants`: `{id, statement, source, entry_points, status}` with ledger statuses; `source` is the spec, ADR, contract or user requirement; `entry_points` is a nonempty string array. Empty needs `invariants_reason`.
   - `gaps`: every sampled or uncovered unit kind and module; then optional `index_recommendation` says what a faster enumeration (a code index, if the project has one) would cover.
 - **strengths** (optional, rendered into Strengths): `{control, boundary, evidence}`: the verified control, the boundary tested and `file:line` evidence; re-read the code for the opposite hypothesis first.
-- **prior_reports** (optional): `{source, item, prior_severity, verdict: reproduced|refuted|not_applicable|unverifiable, evidence}`.
+- **Prior report** (optional input `prior: <report.json>`): see "Prior report" above; the fields are `provenance.prior` plus `prior_verdicts`, `prior_checks` or `requirements` by mode.
 - Schema 2.0 and 2.1 reports are rejected; regenerate rather than compare. Consumers distinguish `null` scores by `status` and never treat them as zero.
