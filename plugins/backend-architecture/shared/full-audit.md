@@ -1,6 +1,6 @@
 # Full audit protocol
 
-Use for an unfocused service/repository audit (all 13 technical areas; domain passes only with `domain=on`), or for any audit whose inventory is too large for one pass to hold (roughly more than 30 entry points or 5 domain modules when domain review is enabled). Its purpose: no unit is skipped and no conclusion rests on an unrecorded read. The coverage rules themselves are in `method.md`.
+Use only for a full audit with no focus areas: `--full` (or an explicit request for a full, complete audit) over a service, repository or architecture document, all 13 technical areas, domain passes only with `domain=on`. It is never entered by default or by inventory size: the default audit is the triage in `backend-audit`, and a large inventory only makes the triage recommend `--full`. Its purpose: no unit is skipped and no conclusion rests on an unrecorded read. The coverage rules themselves are in `method.md`.
 
 ## Work file
 
@@ -8,7 +8,7 @@ Before checking anything create `docs/audit/backend-audit-<YYYY-MM-DD>.work.md` 
 
 ## Phases, in fixed order
 
-0. **Inventory (lead).** System map — entry points, modules/services, stores, brokers, external clients, deployment and trust boundaries — as claims to verify, not findings. Unit inventory per `method.md`; domain sources and their invariants only with `domain=on`; available code index; prior audits of the same target. Assign every in-scope unit and, when enabled, domain module to exactly one pass below and write the assignment to the work file.
+0. **Inventory (lead).** System map — entry points, modules/services, stores, brokers, external clients, deployment and trust boundaries — as claims to verify, not findings. Unit inventory per `method.md`, extending the quick count `backend-audit` already took rather than recounting it; for an architecture document the units are its sections, claims and diagrams (document units are valid, with quoted text as evidence); domain sources and their invariants only with `domain=on`; available code index; prior audits of the same target. Assign every in-scope unit and, when enabled, domain module to exactly one pass below and write the assignment to the work file.
 1. **Critical flows (lead).** Trace the 3–5 highest-impact flows end to end. Record each with file:line as claims for the passes to confirm or refute.
 2. **Area passes.** Each pass reads `${CLAUDE_PLUGIN_ROOT}/shared/method.md` and only its own `checks.md` files, applies the domain scope filter before following rule references, resolves remaining rule bodies by ID and gives every check of its areas a ledger state (`not_applicable` with a reason for excluded domain checks).
 

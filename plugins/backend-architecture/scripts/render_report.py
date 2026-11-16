@@ -17,8 +17,11 @@ NAMES = {'API': 'API design', 'DATA': 'Data storage & transactions', 'CACHE': 'C
          'CONC': 'Concurrency', 'IDEM': 'Idempotency & consistency', 'RES': 'Resilience', 'SCALE': 'Scalability',
          'PERF': 'Performance', 'SEC': 'Security', 'OBS': 'Observability', 'ARCH': 'Architecture styles & boundaries',
          'OPS': 'Delivery & operations'}
-SECTIONS = ('header', 'scorecard', 'coverage', 'items', 'decisions', 'validation')
-REQUIRED = {'audit': ('header', 'scorecard', 'coverage', 'items'), 'design': ('header', 'scorecard', 'coverage', 'items', 'decisions', 'validation')}
+SECTIONS = ('header', 'scorecard', 'coverage', 'items', 'decisions', 'validation', 'assumptions', 'risks', 'not_examined')
+REQUIRED = {'full': ('header', 'scorecard', 'coverage', 'items'), 'triage': ('header', 'items', 'not_examined'),
+            'design': ('header', 'assumptions', 'decisions', 'risks', 'validation')}
+
+def kind(r): return 'design' if r['mode'] == 'design' else r['depth']
 SCRIPT = Path(__file__).resolve()
 
 def plugin_version():
@@ -43,7 +46,19 @@ def score_text(score, status):
     s = f'{score:g}/10' if status else f'{score:.1f}/10'
     return s + (' (provisional)' if status in ('partial', True) else '')
 
+def validated(): return f'\n\n**Schema validation:** passed; rendered by `{SCRIPT}` (plugin {plugin_version()}).'
+
 def header(r):
+    if r['mode'] == 'design':
+        return table(['Mode', 'Target', 'Areas', 'Date', 'Decisions', 'Risks'],
+                     [['design', r['target'], ', '.join(r['provenance']['scope']), r['date'], len(r['decisions']), len(r.get('risks', []))]]) + validated()
+    if 'overall' not in r or 'areas' not in r:
+        result = table(['Mode', 'Target', 'Areas', 'Date', 'Findings'],
+                       [[f"audit ({r['depth']})", r['target'], ', '.join(r['provenance'].get('scope') or ['all 13']), r['date'], len(r['items'])]])
+        if r['provenance'].get('exclusions'): result += '\n\n**Exclusions:** ' + cell(r['provenance']['exclusions'])
+        if r.get('units_counted'): result += '\n\n**Units counted:** ' + '; '.join(f"{u['total']} {u['kind']}" for u in r['units_counted'])
+        if r.get('full_audit_suggested'): result += '\n\n**Full audit suggested:** ' + r['full_audit_suggested']
+        return result + validated()
     o = r['overall']
     overall = 'Not assessed' if o.get('score') is None else score_text(o['score'], None) + (' (provisional)' if o.get('provisional') else '')
     result = table(['Mode', 'Target', 'Areas', 'Date', 'Overall', 'Readiness', 'Confidence'],
@@ -84,7 +99,7 @@ def coverage(r):
     return '\n\n'.join(parts)
 
 def items(r):
-    if not r['items']: return '_No ' + ('findings' if r['mode'] == 'audit' else 'residual risks') + ' established._'
+    if not r['items']: return '_No findings established._'
     out = []
     for i in sorted(r['items'], key=lambda i: ('critical', 'high', 'medium', 'low', 'info').index(i['severity'])):
         also = f"; also {', '.join(i['also_areas'])}" if i.get('also_areas') else ''
@@ -103,9 +118,25 @@ def decisions(r):
     out = []
     for d in r['decisions']:
         fields = [('Options', d.get('options')), ('Chosen', d['choice']), ('Why', d.get('why')), ('Trade-off', d.get('tradeoff')),
-                  ('Revisit when', d.get('revisit')), ('Rules', d['rules']), ('Validation', d.get('validation'))]
+                  ('Revisit when', d.get('revisit')), ('Rules', d['rules']), ('Assumptions', d.get('assumptions')), ('Validation', d.get('validation'))]
         out.append(f"**{d['id']} · {d['title']}** — " + ' · '.join(f'{k}: {cell(v)}' for k, v in fields if v))
     return '\n\n'.join(out)
+
+def assumptions(r):
+    return table(['ID', 'Assumption', 'Choice changes when', 'How to check'], [[a['id'], a['statement'], a['threshold'], a['check']] for a in r['assumptions']])
+
+def risks(r):
+    if not r.get('risks'): return '_No residual risks established._'
+    out = []
+    for x in sorted(r['risks'], key=lambda x: ('critical', 'high', 'medium', 'low', 'info').index(x['severity'])):
+        assumes = f" · **Assumes:** {', '.join(x['assumptions'])}" if x.get('assumptions') else ''
+        out.append(f"### {x['id']} · {x['title']} — {x['severity'].title()}\n"
+                   f"- **Element:** {x['element']} · **Rule:** {', '.join(x['rules'])}{assumes}\n"
+                   f"- **Scenario:** {x['scenario']}\n- **Fix:** {x['fix']}")
+    return '\n\n'.join(out)
+
+def not_examined(r):
+    return '\n'.join('- ' + x for x in r['not_examined'])
 
 def validation(r):
     if not r['validation']: return '_No validation scenarios._'
@@ -130,7 +161,7 @@ def render(text, report):
         found.add(name)
         return f'<!-- render:{name} -->\n{globals()[name](report)}\n<!-- /render:{name} -->'
     out = MARKER.sub(sub, text)
-    missing = [n for n in REQUIRED[report['mode']] if n not in found]
+    missing = [n for n in REQUIRED[kind(report)] if n not in found]
     return out, [f'missing marker <!-- render:{n} -->' for n in missing]
 
 def main():

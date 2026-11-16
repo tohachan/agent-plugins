@@ -15,12 +15,12 @@ For local development load a working copy directly, for example `claude --plugin
 
 | Plugin | Version | What it does |
 | --- | --- | --- |
-| [backend-architecture](plugins/backend-architecture/README.md) | 0.5.0 | Backend audit, design and single-area rule lookup: 13 technical areas with opt-in domain review (`--domain on`), a mandatory coverage inventory, calibrated severities and a validated JSON report. |
+| [backend-architecture](plugins/backend-architecture/README.md) | 0.6.0 | Backend audit (triage by default, `--full` for the scored protocol), design with an assumptions registry and single-area rule lookup: 13 technical areas with opt-in domain review (`--domain on`), calibrated severities and a validated JSON report. |
 
 ## Conventions
 
 - Plugins stay project-agnostic. Project-specific hints (where a project's specs or code index live) belong in that project's own `CLAUDE.md` or `.claude/`, not here.
-- A change to a report or data contract is a breaking change: bump the plugin's minor version and note it in its README.
+- A change to a report or data contract is a breaking change: bump the plugin's minor version and note it in the plugin's CHANGELOG.
 - Every plugin keeps deterministic checks runnable with its own instructions; behavioural eval results (traces, reports, token logs) are kept outside the repository (`eval-runs/` is ignored).
 
 ## Checks

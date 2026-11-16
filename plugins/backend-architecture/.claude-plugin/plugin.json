@@ -1,7 +1,7 @@
 {
   "name": "backend-architecture",
-  "version": "0.5.0",
-  "description": "Audit and design backend services against rules across 13 technical areas, or look up a single area's rules. Audit and design produce a coverage inventory and a scored, structured report; domain review is opt-in.",
+  "version": "0.6.0",
+  "description": "Audit and design backend services against rules across 13 technical areas, or look up a single area's rules. Audit defaults to a triage of the top risks; a full audit adds a coverage inventory and scored report; design records assumptions, decisions and validation. Domain review is opt-in.",
   "author": {
     "name": "tohachan"
   },

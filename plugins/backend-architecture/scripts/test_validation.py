@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from validate_report import load_report, validate, ROOT
+from validate_report import load_report, load_examples, validate, ROOT
 
 class ReportContractTests(unittest.TestCase):
     def setUp(self): self.report = load_report(ROOT/'shared/report.md')
@@ -83,7 +83,7 @@ class ReportContractTests(unittest.TestCase):
     def ci(self): return self.report['coverage_inventory']
     def test_legacy_schema_rejected(self):
         self.report['schema_version'] = '2.0'
-        self.assertTrue(any('2.1' in x for x in validate(self.report)))
+        self.assertTrue(any('3.0' in x for x in validate(self.report)))
     def test_missing_coverage_inventory_rejected(self):
         del self.report['coverage_inventory']
         self.assertTrue(any('coverage_inventory' in x for x in validate(self.report)))
@@ -133,9 +133,6 @@ class ReportContractTests(unittest.TestCase):
     def test_invariant_requires_source(self):
         self.ci()['invariants'][0]['source'] = ''
         self.assertTrue(any('source required' in x for x in validate(self.report)))
-    def test_design_requires_invariants(self):
-        self.report['mode'] = 'design'; self.ci()['invariants'] = []
-        self.assertTrue(any('derived from the requirements' in x for x in validate(self.report)))
     def test_severity_if_must_be_higher(self):
         item = self.item('medium'); item['area'] = 'RES'; item.update(severity_if='low', trigger='pilot lifted')
         self.report['items'] = [item]; self.report['areas'][0]['counts']['medium'] = 1
@@ -152,5 +149,72 @@ class ReportContractTests(unittest.TestCase):
     def test_bad_input_does_not_pass(self):
         for value in [[],{}, {'areas':[None]}]:
             self.assertTrue(validate(value))
+
+class TriageContractTests(unittest.TestCase):
+    def setUp(self):
+        self.report = [x for x in load_examples(ROOT/'shared/report.md') if x.get('depth') == 'triage'][0]
+    def test_documented_example(self): self.assertEqual(validate(self.report), [])
+    def test_no_scores_or_inventory_needed(self):
+        for key in ('areas', 'overall', 'coverage_inventory'): self.assertNotIn(key, self.report)
+    def test_not_examined_required(self):
+        self.report['not_examined'] = []
+        self.assertTrue(any('not_examined' in x for x in validate(self.report)))
+    def test_depth_required(self):
+        del self.report['depth']
+        self.assertTrue(any('depth' in x for x in validate(self.report)))
+    def test_finding_needs_evidence_and_known_area(self):
+        self.report['items'] = [{'id': 'F-1', 'area': 'RES', 'severity': 'high', 'rules': ['RES-BAD-1'], 'effort': 'S', 'title': 'Unbounded call',
+                                 'fingerprint': 'orders:lookup:unbounded', 'confidence': 'confirmed', 'evidence': [], 'verification': 'Planned.'}]
+        self.assertTrue(any('evidence' in x for x in validate(self.report)))
+        self.report['items'][0].update(evidence=['client.go:24'], area='NOPE')
+        self.assertTrue(any('out of scope' in x for x in validate(self.report)))
+        self.report['items'][0]['area'] = 'RES'
+        self.assertEqual(validate(self.report), [])
+    def test_optional_scores_are_still_checked_when_present(self):
+        self.report['overall'] = {'score': 9}
+        self.assertTrue(validate(self.report))
+    def test_suggestion_is_null_or_text(self):
+        self.report['full_audit_suggested'] = ''
+        self.assertTrue(any('full_audit_suggested' in x for x in validate(self.report)))
+
+class DesignContractTests(unittest.TestCase):
+    def setUp(self):
+        self.report = [x for x in load_examples(ROOT/'shared/report.md') if x.get('mode') == 'design'][0]
+    def test_documented_example_needs_no_scorecard_or_readiness(self):
+        self.assertEqual(validate(self.report), [])
+        for key in ('areas', 'overall', 'coverage_inventory'): self.assertNotIn(key, self.report)
+    def test_scorecard_fields_rejected(self):
+        self.report['overall'] = {'readiness': 'supported_in_scope'}
+        self.assertTrue(any('no overall' in x for x in validate(self.report)))
+    def test_assumptions_required(self):
+        self.report['assumptions'] = []
+        self.assertTrue(any('assumptions' in x for x in validate(self.report)))
+    def test_assumption_needs_threshold(self):
+        self.report['assumptions'][0]['threshold'] = ''
+        self.assertTrue(any('threshold' in x for x in validate(self.report)))
+    def test_decision_references_checked(self):
+        self.report['decisions'][0]['assumptions'] = ['A-9']
+        self.report['decisions'][0]['validation'] = ['V-9']
+        errors = validate(self.report)
+        self.assertTrue(any('invalid assumptions' in x for x in errors) and any('invalid validation' in x for x in errors))
+    def test_unknown_rule_rejected(self):
+        self.report['decisions'][0]['rules'] = ['IDEM-BP-9999']
+        self.assertTrue(any('unknown rule' in x for x in validate(self.report)))
+    def test_validation_required_and_planned_is_not_passed(self):
+        self.report['validation'][0]['status'] = 'passed'
+        self.assertTrue(any('result evidence' in x for x in validate(self.report)))
+        self.report['validation'] = []
+        self.assertTrue(any('validation' in x for x in validate(self.report)))
+    def test_risk_needs_scenario_and_known_assumption(self):
+        self.report['risks'][0]['scenario'] = ''
+        self.report['risks'][0]['assumptions'] = ['A-7']
+        errors = validate(self.report)
+        self.assertTrue(any('scenario' in x for x in errors) and any('invalid assumptions' in x for x in errors))
+    def test_risks_may_be_empty(self):
+        self.report['risks'] = []
+        self.assertEqual(validate(self.report), [])
+    def test_audit_schema_is_not_accepted_for_design(self):
+        self.report['schema_version'] = '2.1'
+        self.assertTrue(any('3.0' in x for x in validate(self.report)))
 
 if __name__ == '__main__': unittest.main()

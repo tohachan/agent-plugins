@@ -1,6 +1,6 @@
 # Domain review
 
-Read only for audits with `domain=on`, or for backend design. Apply checks only within the selected areas and mechanisms in a focused audit; a full audit covers every in-scope domain module.
+Read only for audits with `domain=on`, or for a backend design whose requirements name privileged roles, money movement, approvals or retention/deletion obligations. Apply checks only within the selected areas and mechanisms in a focused audit; a full audit covers every in-scope domain module.
 
 The skill does not define the target's domain. Derive it from the target's own sources — specs, ADRs, contracts, policies, tests, code comments, the authorization registry — and record each invariant with its source, owner and every entry point that can violate it. For each domain module apply at least:
 
