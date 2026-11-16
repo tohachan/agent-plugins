@@ -28,6 +28,8 @@ class IdHygieneTests(unittest.TestCase):
     def test_plain_check_ok(self): self.assertEqual(checks_layout_errors('c', '| A-CHK-1 | q | e | high |\n'), [])
     def test_slash_abbreviation_rejected(self): self.assertTrue(abbreviation_errors('s', 'see IDEM-BP-12/13'))
     def test_comma_abbreviation_rejected(self): self.assertTrue(abbreviation_errors('s', 'PERF-BP-1, BP-3, BAD-2'))
+    def test_spaced_range_and_list_rejected(self):
+        for t in ('SEC-BP-1 / 3', 'SEC-BP-1\u20133', 'SEC-BP-1-3', 'SEC-BP-1, 3', 'SEC-BP-1 and 3'): self.assertTrue(abbreviation_errors('s', t), t)
     def test_bare_id_rejected(self): self.assertTrue(abbreviation_errors('s', 'use (BP-8)'))
     def test_full_ids_ok(self): self.assertEqual(abbreviation_errors('s', 'PERF-BP-1, PERF-BP-3 and IDEM-BP-12, IDEM-BP-13; XX-BP-n'), [])
     def test_orphan_rejected(self): self.assertEqual(len(orphan_errors({'A-BP-1': 1, 'A-BP-2': 1, 'A-CHK-1': 1}, {'A-BP-1'})), 1)

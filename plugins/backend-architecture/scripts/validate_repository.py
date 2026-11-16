@@ -11,7 +11,7 @@ RULE_DEF = re.compile(r'`([A-Z]+-(?:BP|BAD|AP)-\d+)`')
 CHECK_DEF = re.compile(r'\| ([A-Z]+-CHK-\d+) \|')
 RULE_MARKED = re.compile(r'^\s*[-*>]\s*`[A-Z]+-(?:BP|BAD|AP)-\d+`')
 CHECK_TICKED = re.compile(r'^\|\s*`[A-Z]+-CHK-\d+`')
-ABBREVIATED = re.compile(r'\b[A-Z]+-(?:BP|BAD|AP|CHK)-\d+(?:/\d+|, (?:BP|BAD|AP|CHK)-\d+)|(?<![A-Z]-)\b(?:BP|BAD|AP|CHK)-\d+\b')
+ABBREVIATED = re.compile(r'\b[A-Z]+-(?:BP|BAD|AP|CHK)-\d+(?:\s*/\s*\d+|[\u2013-]\d+| and \d+|, \d+\b|, (?:BP|BAD|AP|CHK)-\d+)|(?<![A-Z]-)\b(?:BP|BAD|AP|CHK)-\d+\b')
 PATH_REF = re.compile(r'`((?:shared|knowledge|scripts|agents)/[A-Za-z0-9_./-]+\.(?:md|py))`')
 
 RULES_CELL_ID = re.compile(r'[A-Z]+-(?:BP|BAD|AP)-\d+')

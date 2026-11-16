@@ -20,7 +20,7 @@ A new area is a directory `knowledge/<prefix>/` with three files. Each starts wi
 
 ## rules.md — `## Best practices`, `## Bad practices`, `## Anti-patterns`, `## Go / Node.js notes`
 
-Every rule is exactly one line that starts with the ID in backticks, so `^\`<ID>\`` returns the whole body; no list marker, no continuation lines. `<kind>` is one of `BP`, `BAD`, `AP`.
+Every rule is exactly one line that starts with the ID in backticks, so `^\`<ID>\`` returns the whole body; no list marker, no continuation lines. IDs are `<PREFIX>-<kind>-n` with `<kind>` one of `BP`, `BAD`, `AP`.
 
 `<PREFIX>-BP-n` — **Rule in one line.** Why (the failure prevented), how (mechanism), applicability, alternative, verification.
 
