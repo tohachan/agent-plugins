@@ -7,3 +7,5 @@ __pycache__/
 .vscode/
 # Eval runs: traces, model reports and token logs stay outside the plugins
 eval-runs/
+# Local review material, not part of the repository
+tmp/
