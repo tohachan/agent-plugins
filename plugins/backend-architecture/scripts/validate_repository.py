@@ -118,7 +118,8 @@ def main():
     for rel in ('shared/method.md', 'shared/domain-audit.md', 'shared/report.md', 'shared/full-audit.md', 'knowledge/README.md', 'knowledge/sources.md'):
         if not (ROOT / rel).is_file(): errors.append(f'Missing runtime reference {rel}')
     for agent in sorted((ROOT / 'agents').glob('*.md')):
-        frontmatter(agent, agent.stem, errors)
+        front = frontmatter(agent, agent.stem, errors).split('\n---\n', 1)[0]
+        if re.search(r'^tools:.*\bBash\b', front, re.M): errors.append(f'{agent.relative_to(ROOT)}: audit agents read only; running the target\'s code is the lead\'s, with the user\'s consent')
     for skill in sorted((ROOT / 'skills').iterdir()):
         if not (skill / 'SKILL.md').exists(): continue
         frontmatter(skill / 'SKILL.md', skill.name, errors)

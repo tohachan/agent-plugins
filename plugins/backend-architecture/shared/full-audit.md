@@ -34,6 +34,8 @@ Then send every High/Critical candidate, and every strength standing for a criti
 
 Run the same passes sequentially in the table's order. After each pass append its ledger rows and unit statuses to the work file before opening the next pass's checklists; never carry a candidate only in context. Before keeping a High/Critical candidate or a critical strength, re-read its code for the opposite hypothesis — how this could be safe, or how the control could be bypassed — and record the result.
 
+Reviewers and verifiers have no shell. Anything that needs the target's code run (tests, an experiment) is collected by the lead as a named proposal; the lead runs it only with the user's explicit agreement, one at a time (`method.md`, "Verification and acceptance"), and records it as executed. Otherwise it stays `unexecuted`.
+
 ## Coverage gate
 
 1. **Merge.** Every in-scope unit and enabled domain module has an owner and a terminal status. A unit nobody took is reported as a gap, never dropped.

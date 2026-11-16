@@ -1,7 +1,7 @@
 ---
 name: backend-reviewer
 description: One pass of a backend-audit full audit — checks an assigned list of coverage units against assigned area checklists or domain checks and returns ledger rows. Launched by the backend-audit skill with a brief; not for standalone reviews.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob
 model: sonnet
 effort: medium
 ---
@@ -14,7 +14,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/shared/method.md` (`domain=off` if the brief omits i
 - Give every unit in your list a status, and every check of your areas a ledger state. Enumerate what is enumerable; if you sample, state rule and denominator.
 - Before calling a control missing, inspect its other plausible owners (callers, schema, middleware, gateway, infrastructure, provider contract).
 - For each strength, state the boundary tested: the bypass attempted, the other writers searched, or the matrix checked.
-- Bash is for read-only inspection and for running the target's existing tests or a targeted experiment; record executed versus inspected.
+- You have no shell: you cannot run the target's tests or experiments. Everything you record is inspected; where an experiment would settle a point, name it as an open question for the lead.
 
 Return exactly these sections, terse, no prose outside them:
 
