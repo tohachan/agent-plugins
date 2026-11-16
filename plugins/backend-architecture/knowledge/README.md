@@ -26,7 +26,7 @@ Rule IDs are stable; findings, decisions and risks cite them. `../shared/method.
 | ARCH · `arch/` | Architecture styles & boundaries | several modules/services, monolith vs services |
 | OPS · `ops/` | Delivery & operations | CI/CD, deploys, config, production migrations, on-call |
 
-**Domain coverage** is opt-in for audits (`--domain on` or an explicit request; see `../shared/method.md`, "Audit scope") and is derived per target, not stored here: modules, invariants and obligations come from the target's specs, ADRs, contracts, tests, policies and authorization registry. Audits load it only with domain on; design always applies it. When enabled, domain findings take the closest area as primary and use SEC-CHK-21, SEC-CHK-23, DATA-CHK-21 and IDEM-CHK-21 plus any applicable area rule; SEC-CHK-22 is a mixed check (technical part always, domain part only with domain on). Details: `../shared/domain-audit.md`. With domain off, those domain checks are `not_applicable` ("domain review excluded").
+**Domain coverage** is opt-in for audits (`--domain on` or an explicit request; see `../shared/method.md`, "Audit scope") and is derived per target, not stored here: modules, invariants and obligations come from the target's specs, ADRs, contracts, tests, policies and authorization registry. Audits load it only with domain on; design always applies it. When enabled, domain findings take the closest area as primary and use SEC-CHK-21, SEC-CHK-23, DATA-CHK-21 and IDEM-CHK-21 plus any applicable area rule; SEC-CHK-22 is a mixed check (technical part always, domain part only with domain on). Details: `../shared/domain-audit.md`. With domain off, SEC-CHK-21, SEC-CHK-23, DATA-CHK-21 and IDEM-CHK-21 are `not_applicable` ("domain review excluded"); SEC-CHK-22 keeps its technical authorization part.
 
 ## Aliases
 
@@ -44,4 +44,4 @@ Rule IDs are stable; findings, decisions and risks cite them. `../shared/method.
 | data leaks, abuse | SEC, API |
 | a privileged user changed their own outcome; a rule holds in one screen but not another | domain pass (domain=on) + SEC-CHK-21; technical part: SEC-CHK-22 |
 | items stuck waiting, a period cannot close | domain pass + IDEM-CHK-21 (domain=on); technical part: MSG, CONC |
-| data kept longer than policy allows | DATA-CHK-21, SEC-CHK-20 |
+| data kept longer than policy allows | DATA-CHK-21 (domain=on), SEC-CHK-20 (technical part: deletion-job mechanics) |
