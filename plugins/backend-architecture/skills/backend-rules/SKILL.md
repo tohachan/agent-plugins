@@ -8,7 +8,9 @@ argument-hint: "<area | rule ID> [question or path]"
 
 Plugin files live under `${CLAUDE_PLUGIN_ROOT}` (the plugin root, two levels above this skill directory); every `knowledge/` path below is under it, never in the target repository. Do not load `${CLAUDE_PLUGIN_ROOT}/shared/report.md` or `${CLAUDE_PLUGIN_ROOT}/shared/full-audit.md`; this skill produces no scorecard, coverage inventory, JSON or saved report.
 
-1. **Locate.** A rule ID maps to its directory by prefix (`IDEM-BP-13` → `${CLAUDE_PLUGIN_ROOT}/knowledge/idem/`): Grep the ID (`` ^`IDEM-BP-13` ``; a check as `` ^\| IDEM-CHK-3 \| ``; every rule body is one line, so no context flag is needed) and skip to step 3. Otherwise map the request through the aliases in `${CLAUDE_PLUGIN_ROOT}/knowledge/README.md` to 1–3 areas; a question that needs more is not a lookup (see the end).
+1. **Locate.**
+   - Given a rule ID, take its directory from the prefix (`IDEM-BP-13` → `${CLAUDE_PLUGIN_ROOT}/knowledge/idem/`) and Grep the ID: `` ^`IDEM-BP-13` `` for a rule, `` ^\| IDEM-CHK-3 \| `` for a check. Every rule body is one line, so no context flag is needed. Then skip to step 3.
+   - Otherwise map the request through the aliases in `${CLAUDE_PLUGIN_ROOT}/knowledge/README.md` to 1–3 areas. A question that needs more areas is not a lookup (see the end).
 2. **Read one file per area**, by question type:
    - "how should it be done / is this right" → `rules.md`;
    - "verify this code or config" → `checks.md`, then Grep the cited rule IDs;

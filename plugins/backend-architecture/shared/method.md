@@ -41,7 +41,13 @@ Coverage holes hide the findings that matter most, because the reviewed paths ar
 
 ## Check ledger
 
-Keep a compact ledger of selected checks and critical invariants with evidence locations; reuse it across areas. Do not print hundreds of passing rows.
+**Ledger size.** Every check of an area gets one of the four states below, but the ledger records them by state:
+
+- `violation` and `unverified` get a full row each: check, state, evidence location, note.
+- `verified` and `not_applicable` are recorded as a count per area, plus a full row for each critical invariant (a check the audit's critical flows depend on). Never list hundreds of passing rows.
+- In a full audit the lead adds each area's counts into that area's `coverage` (`report.md`); a triage audit has no ledger.
+
+Reuse evidence across areas instead of re-recording it.
 
 | State | Meaning |
 | --- | --- |
@@ -74,7 +80,16 @@ For each critical requirement keep a traceability row (audit: observed; design: 
 | --- | --- | --- | --- | --- |
 | Duplicate webhook, concurrent retry and worker crash | One business effect per provider operation | Durable inbox and atomic state update | Inject crashes before/after each durable step; replay concurrently | One effect after recovery; planned, not executed |
 
-Use existing tests, contracts, traces and measurements. **Running the target's tests or an experiment executes the target's code** — it can write files and databases, open ports, call the network and need secrets — so reviewer and verifier agents have no shell, and only the lead runs anything: sequentially, never in parallel on shared local resources, and only after the user explicitly agrees to that run (state what runs and what it may touch). Without that agreement specify the experiment and label it unexecuted. For unknown external outcomes test recovery, not only the happy-path retry. Capacity claims need representative data, saturation and peak/failure scenarios; estimates are not benchmarks. For security name actors, assets, trust crossings and abuse paths before choosing controls. For consequential design choices compare the simplest viable option against alternatives, vary uncertain load/budget inputs to find the decision threshold, and document rollout compatibility, migration reconciliation and rollback acceptance where persistent state changes.
+Use existing tests, contracts, traces and measurements.
+
+**Running the target's tests or an experiment executes the target's code**: it can write files and databases, open ports, call the network and need secrets. Reviewer and verifier agents therefore have no shell. Only the lead runs anything, one run at a time (never in parallel on shared local resources), and only after the user explicitly agrees to that run; state what runs and what it may touch. Without that agreement, specify the experiment and label it unexecuted.
+
+Also:
+
+- For unknown external outcomes, test recovery, not only the happy-path retry.
+- Capacity claims need representative data, saturation and peak/failure scenarios; estimates are not benchmarks.
+- For security, name actors, assets, trust crossings and abuse paths before choosing controls.
+- For consequential design choices, compare the simplest viable option against alternatives, vary uncertain load/budget inputs to find the decision threshold, and document rollout compatibility, migration reconciliation and rollback acceptance where persistent state changes.
 
 ## Judgement and reading economy
 

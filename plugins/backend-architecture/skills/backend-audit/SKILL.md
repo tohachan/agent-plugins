@@ -12,7 +12,7 @@ Plugin files live under `${CLAUDE_PLUGIN_ROOT}` (the plugin root, two levels abo
 
 ## 1. Scope and depth
 
-Map the request / `$ARGUMENTS` through the index aliases and symptom table. Resolve domain scope per `${CLAUDE_PLUGIN_ROOT}/shared/method.md`: default `off`; `--domain on` or an explicit request to check business/domain logic enables it, `--domain off` excludes it. `all`, "full audit" and "проверь всё" alone keep it off.
+Map the request / `$ARGUMENTS` through the index aliases and symptom table. Resolve `domain=on|off` per `${CLAUDE_PLUGIN_ROOT}/shared/method.md`: the default is `off`; `--domain on` or an explicit request to check business/domain logic sets `on`, and `--domain off` sets `off`. `all`, "full audit" and "проверь всё" alone leave it `off`.
 
 **Depth is chosen before any inventory, from the request alone:**
 
@@ -40,11 +40,11 @@ Report using the triage layout of `${CLAUDE_PLUGIN_ROOT}/shared/report.md` and r
 
 ## 3. Trace and check (full, focused)
 
-Build the coverage inventory (method, "Coverage inventory") from the quick count before checking: units from the project's own artifacts, domain sources only when enabled, a code index if present, prior audits of the same target. Document units (sections, claims) are valid units. Trace the critical flows in scope end to end. Read the selected areas' `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md`; resolve each in-scope cited rule by Grep on its ID. Look up a rule to confirm or refute a candidate, not only after deciding to report it. Apply the method's mechanism boundaries and, when domain review is enabled, the relevant checks in `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md`. Keep the ledger in the scratch work file; propose tests or experiments to the user and run them yourself only with explicit agreement (`method.md`, "Verification and acceptance"); reviewers cannot run code; record inspected versus executed.
+Build the coverage inventory (method, "Coverage inventory") from the quick count before checking: units from the project's own artifacts, domain sources only when enabled, a code index if present, prior audits of the same target. Document units (sections, claims) are valid units. Trace the critical flows in scope end to end. Read the selected areas' `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md`; resolve each in-scope cited rule by Grep on its ID. Look up a rule to confirm or refute a candidate, not only after deciding to report it. Apply the method's mechanism boundaries and, when domain review is enabled, the relevant checks in `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md`. Keep the ledger in the scratch work file. Propose tests or experiments to the user; run them yourself only with explicit agreement (`method.md`, "Verification and acceptance"), because reviewers cannot run code. Record what was inspected and what was executed.
 
 ## 4. Gate (full, focused)
 
-Every in-scope unit has a terminal status. Before keeping a High/Critical candidate or a critical strength, re-read the code for the opposite hypothesis. With a `prior`, give every prior item its verdict (or, for a design prior, every D-n and V-n its status) as `report.md` describes.
+Give every in-scope unit a terminal status. Before keeping a High/Critical candidate or a critical strength, re-read the code for the opposite hypothesis. With a `prior`, give every prior item its verdict (or, for a design prior, every D-n and V-n its status) as `report.md` describes.
 
 ## 5. Judge, report, render
 
@@ -55,5 +55,9 @@ Apply `${CLAUDE_PLUGIN_ROOT}/shared/report.md`: realistic impact, minimal fix an
 - **Record the models.** Fill `provenance.models` with one row per role that ran (lead, each reviewer, each verifier): the model and the `effort` requested, as the harness reported them (`unknown` when it did not say). `effort` is a request, not a measurement.
 - **Judgments only in the JSON.** Give scores, statuses, coverage, items (with `priority` and optional `depends_on`), strengths, `unknowns` (material: what is unknown and why it matters) and `noted_unknowns`; the renderer computes counts, the overall score, flags, blockers and readiness, so do not type them. Put an unknown in `unknowns` only when it changes a critical promise; runtime behavior a source audit cannot see goes in `noted_unknowns`.
 - **Render and validate before delivering:** write the narrative sections, render markers and closing JSON into the scratch draft, then run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py <draft> --evidence-root <target repository root>` (add `--prior <the prior report>` when one was given, with the `prior` marker in the draft) (always the plugin's script by this absolute path, whatever the working directory; never a `scripts/` copy in the target). Evidence references are relative to that root. **At most 3 runs:** fix the JSON each time. If the third still fails, deliver the draft marked `validation failed: <the errors>` (no `Schema validation:` line) and say so in the reply, instead of looping.
-- **Save** a rendered report in a writable repository to `docs/audit/backend-audit-<slug>-<YYYY-MM-DD>.md` unless the user chooses otherwise; `<slug>` is the target's service or directory name lowercased to `[a-z0-9-]`, at most 40 characters (`orders-service`), the repository name for a whole repository. A file that exists is never overwritten: add `-2`, `-3`, … before `.md`. A read-only repository, or no repository, gets the report in the reply. Earlier audits of the same target are the `docs/audit/backend-audit-<slug>-*.md` files (and legacy `backend-audit-<date>.md`); offer the latest as `prior` when the user gave none, never use one silently.
+- **Save** a rendered report in a writable repository to `docs/audit/backend-audit-<slug>-<YYYY-MM-DD>.md` unless the user chooses otherwise.
+  - `<slug>` is the target's service or directory name (the repository name for a whole repository), lowercased to `[a-z0-9-]`, at most 40 characters, e.g. `orders-service`.
+  - If the file exists, do not overwrite it: add `-2`, `-3`, … before `.md`.
+  - With a read-only repository or none, give the report in the reply.
+  - Earlier audits of the same target are the `docs/audit/backend-audit-<slug>-*.md` files (and legacy `backend-audit-<date>.md`). When the user gave no `prior`, offer the latest; never use one silently.
 - **Chat summary:** depth, domain review on/off, the top risks, what was not examined and, for triage, whether `--full` is worthwhile; for a full audit also blockers, coverage gaps with the index recommendation, and the score. With domain off, say that business logic was excluded.

@@ -11,10 +11,14 @@ You run one pass of a backend audit. The brief gives: the resolved plugin root p
 Read `${CLAUDE_PLUGIN_ROOT}/shared/method.md` (`domain=off` if the brief omits it); load `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md` only with `domain=on`. Then read only `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md` for your areas. Resolve rule bodies by Grep on their ID in `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/rules.md`; do not read whole rule files. Do not read `${CLAUDE_PLUGIN_ROOT}/shared/report.md`. Do not edit the target.
 
 - Treat the system map and flows as claims: confirm or refute the parts you touch, with file:line.
-- Run each check of your areas against the full reference list, so a check about POST routes sees every route. Give every unit in your deep-check batch a status and every check of your areas a ledger state. Units that write money or state or cross a trust boundary are checked, never sampled; only `read-only` units may be `sampled`, by the brief's stated rule and denominator.
+- Run each check of your areas against the full reference list, so a check about POST routes sees every route.
+- Give every unit in your deep-check batch a status, and every check of your areas a ledger state.
+- Check units that write money or state or cross a trust boundary; never sample them. Sample only `read-only` units, by the brief's stated rule and denominator.
 - Before calling a control missing, inspect its other plausible owners (callers, schema, middleware, gateway, infrastructure, provider contract).
 - For each strength, state the boundary tested: the bypass attempted, the other writers searched, or the matrix checked.
 - You have no shell: you cannot run the target's tests or experiments. Everything you record is inspected; where an experiment would settle a point, name it as an open question for the lead.
+
+Ledger size: give a full row only to each `violation`, each `unverified` check and each critical invariant (`method.md`, "Check ledger"). Report every other `verified` and `not_applicable` check only as the per-area count in `## Counts`; the counts must cover every check of your areas, because the lead adds them into the report's `coverage`.
 
 Do not number candidates or strengths: the lead assigns `C-<pass>-<n>` and `S-<pass>-<n>` when it records them. Return exactly these sections, terse, no prose outside them:
 
@@ -22,7 +26,9 @@ Do not number candidates or strengths: the lead assigns `C-<pass>-<n>` and `S-<p
 ## Units
 | Unit | Kind | Tier (writes-state/trust-boundary/read-only) | Status (checked/sampled/not_covered) | Note or sampling rule |
 ## Ledger
-| Check / invariant | State (verified/violation/unverified/not_applicable) | Evidence (file:line) | Note |
+| Check / invariant | State (violation/unverified, or verified for a critical invariant) | Evidence (file:line) | Note |
+## Counts
+| Area | verified | violation | unverified | not_applicable |
 ## Candidates
 - <title> — <severity guess> — rules <IDs> — evidence <file:line> — scenario <one line> — confidence confirmed|likely — fix <one line>
 ## Strengths

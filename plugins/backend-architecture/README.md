@@ -44,7 +44,7 @@ Models: `backend-audit` (the lead that merges passes and judges) runs on `opus` 
 
 - **Coverage inventory**: the list of units (handlers, consumers, jobs, tables, entry points) found in scope and which of them were actually read.
 - **Unit**: one item in that inventory.
-- **Ledger**: the running record, kept in a work file, of candidate findings and their status across passes and context compaction.
+- **Ledger**: the record, kept in a work file, of the checks run in each area: a full row for each `violation`, `unverified` check and critical invariant, and per-area counts for the other states. It survives passes and context compaction.
 - **Critical flow**: a path whose failure is costly (money, auth, data loss), verified end to end rather than file by file.
 - **Critical strength**: a claimed strong point on such a flow; the verifier tries to refute it like a High/Critical finding.
 - **Coverage gate**: the pass that checks the inventory before the report; unread units become explicit gaps.
