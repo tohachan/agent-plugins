@@ -26,11 +26,11 @@ Rule IDs are stable; findings, decisions and risks cite them. `../shared/method.
 | ARCH · `arch/` | Architecture styles & boundaries | several modules/services, monolith vs services |
 | OPS · `ops/` | Delivery & operations | CI/CD, deploys, config, production migrations, on-call |
 
-**Domain coverage** is opt-in for audits (`--domain on` or an explicit request; see `../shared/method.md`, "Audit scope") and is derived per target, not stored here: modules, invariants and obligations come from the target's specs, ADRs, contracts, tests, policies and authorization registry. When enabled, domain findings take the closest area as primary and use SEC-CHK-21, SEC-CHK-22, SEC-CHK-23, DATA-CHK-21 and IDEM-CHK-21 plus any applicable area rule. With domain off, those domain checks are `not_applicable` ("domain review excluded").
+**Domain coverage** is opt-in for audits (`--domain on` or an explicit request; see `../shared/method.md`, "Audit scope") and is derived per target, not stored here: modules, invariants and obligations come from the target's specs, ADRs, contracts, tests, policies and authorization registry. Audits load it only with domain on; design always applies it. When enabled, domain findings take the closest area as primary and use SEC-CHK-21, SEC-CHK-23, DATA-CHK-21 and IDEM-CHK-21 plus any applicable area rule; SEC-CHK-22 is a mixed check (technical part always, domain part only with domain on). Details: `../shared/domain-audit.md`. With domain off, those domain checks are `not_applicable` ("domain review excluded").
 
 ## Aliases
 
-`api`, `rest`, `grpc` → API · `db`, `database`, `sql`, `transactions`, `migrations` → DATA · `cache`, `redis` → CACHE · `queues`, `kafka`, `events`, `jobs`, `очереди` → MSG · `concurrency`, `races`, `locks`, `конкурентность` → CONC · `idempotency`, `consistency`, `saga`, `outbox`, `идемпотентность` → IDEM · `resilience`, `retries`, `timeouts`, `отказоустойчивость` → RES · `scaling`, `sharding`, `масштабирование` → SCALE · `performance`, `optimization`, `latency`, `оптимизация` → PERF · `security`, `auth`, `безопасность` → SEC · `observability`, `logging`, `metrics`, `tracing` → OBS · `architecture`, `microservices`, `monolith`, `ddd` → ARCH · `deploy`, `ci/cd`, `ops`, `config` → OPS · `domain`, `business logic`, `permissions matrix`, `бизнес-логика`, `права` → domain pass + SEC/IDEM/DATA (enables domain review) · `all`, `everything`, `всё` → all 13 technical areas; domain review only if separately enabled (`--domain on`).
+`api`, `rest`, `grpc` → API · `db`, `database`, `sql`, `transactions`, `migrations` → DATA · `cache`, `redis` → CACHE · `queues`, `kafka`, `events`, `jobs`, `очереди` → MSG · `concurrency`, `races`, `locks`, `конкурентность` → CONC · `idempotency`, `consistency`, `saga`, `outbox`, `идемпотентность` → IDEM · `resilience`, `retries`, `timeouts`, `отказоустойчивость` → RES · `scaling`, `sharding`, `масштабирование` → SCALE · `performance`, `optimization`, `latency`, `оптимизация` → PERF · `security`, `auth`, `безопасность` → SEC · `observability`, `logging`, `metrics`, `tracing` → OBS · `architecture`, `microservices`, `monolith`, `ddd` → ARCH · `deploy`, `ci/cd`, `ops`, `config` → OPS · `domain`, `business logic`, `business access rules`, `permissions matrix`, `бизнес-логика`, `бизнес-правила доступа` → domain pass + SEC/IDEM/DATA (enables domain review) · `all`, `everything`, `всё` → all 13 technical areas; domain review only if separately enabled (`--domain on`).
 
 ## Symptom → areas
 
@@ -42,6 +42,6 @@ Rule IDs are stable; findings, decisions and risks cite them. `../shared/method.
 | lost or out-of-order events | MSG, IDEM |
 | "can't deploy without breaking things" | OPS, ARCH, API |
 | data leaks, abuse | SEC, API |
-| a privileged user changed their own outcome; a rule holds in one screen but not another | domain pass (opt-in), SEC-CHK-21, SEC-CHK-22 |
-| items stuck waiting, a period cannot close | domain pass (opt-in), IDEM-CHK-21 |
+| a privileged user changed their own outcome; a rule holds in one screen but not another | domain pass (domain=on) + SEC-CHK-21; technical part: SEC-CHK-22 |
+| items stuck waiting, a period cannot close | domain pass + IDEM-CHK-21 (domain=on); technical part: MSG, CONC |
 | data kept longer than policy allows | DATA-CHK-21, SEC-CHK-20 |
