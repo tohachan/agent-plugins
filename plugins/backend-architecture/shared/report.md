@@ -33,9 +33,9 @@ Never substitute zero for `null`. Report discovered violations even in an unveri
 | 0–1 | Several Critical, or a required control demonstrably absent with severe impact. |
 
 - **Caps** apply in the item's primary area: Critical ≤ 3, High ≤ 5. Another affected area may be lowered with an explanation, without duplicating counts.
-- **Overall** = mean of numeric area scores, rounded half-up to one decimal; capped at 4.0 if any Critical exists (also in an unverified area); `null` with no numeric scores. Show inputs and denominator. Provisional if any area is partial/unverified. Do not compare across changes in scope, coverage, mode or rubric without saying so.
+- **Overall** = mean of numeric area scores, rounded half-up to one decimal; capped at 4.0 if any Critical exists (also in an unverified area; `capped` is true whenever a Critical item exists, even if the mean is already below 4.0); `null` with no numeric scores. `score_inputs` lists the numeric area scores and `denominator` counts them. Provisional if any area is partial/unverified. Do not compare across changes in scope, coverage, mode or rubric without saying so.
 - **Confidence.** Area: high = corroborated critical mechanisms/paths; medium = supporting but limited evidence; low = assumptions dominate; partial cannot be high; `null` for unverified/N/A. Overall: `null` without numeric inputs; a provisional overall cannot be high.
-- **Readiness** (full audit) leads the summary: `blocked` if High/Critical items or demonstrated unmet mandatory requirements exist; else `undetermined` if material evidence or critical validation is missing or any coverage unit/domain module is `not_covered`; else `supported_in_scope`. It is a scoped assessment, never a launch approval. A high average cannot override blockers. Do not invent residual risks to keep a sound design below 10.
+- **Readiness** (full audit) leads the summary: `blocked` if High/Critical items, a failed validation or a blocker you added for a demonstrated unmet mandatory requirement exist; else `undetermined` if any area is partial/unverified, `overall.unknowns` (material) is nonempty, validation is not all passed or any coverage unit/domain module is `not_covered`; else `supported_in_scope`. Only material unknowns count: an unknown that changes no critical promise (runtime behavior a source audit cannot see, a detail already bounded by an area's `unknowns`) goes in `noted_unknowns` and never moves readiness. It is a scoped assessment, never a launch approval. A high average cannot override blockers. Do not invent residual risks to keep a sound design below 10.
 
 ## Domain scope in audit reports
 
@@ -59,11 +59,13 @@ Judge by realistic reachability, impact and blast radius, not the rule's default
 
 ## Items and decisions
 
-One root cause per item. Preserve F-n/R-n IDs of a prior report for recurring issues; never renumber. `fingerprint` = target + logical component/operation + root cause, independent of line numbers and severity. Each item states realistic impact (scenario, violated requirement/invariant, blast radius), a minimal fix, and verification (executed or planned). Design risks (R-n) cite the proposed element, the failure window and, where one applies, the assumption they rest on (A-n). Decisions record options, the choice, why (requirement), trade-off, an observable revisit threshold and rules; link critical ones to validation rows.
+One root cause per item. `priority` (`now|next|later`, required except on Info items) says when to act; optional `depends_on` lists the F-ids that must land first. The rendered Plan table is built from them, ordered Now, Next, Later and by severity, with each item's `verification` as its acceptance gate; migration, mixed-version and rollback gates belong in that verification. Preserve F-n/R-n IDs of a prior report for recurring issues; never renumber. `fingerprint` = target + logical component/operation + root cause, independent of line numbers and severity. Each item states realistic impact (scenario, violated requirement/invariant, blast radius), a minimal fix, and verification (executed or planned). Design risks (R-n) cite the proposed element, the failure window and, where one applies, the assumption they rest on (A-n). Decisions record options, the choice, why (requirement), trade-off, an observable revisit threshold and rules; link critical ones to validation rows.
 
 ## Writing the report: data once, rendered tables
 
-Write every table and item **only in the closing JSON**; never type them in Markdown. Put render markers where they belong and run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py <report> [--evidence-root <target>]` (the plugin's own script by absolute path, whatever the working directory). It validates the JSON, then replaces each marker with the rendered block; re-running is idempotent and nothing is written while validation fails. On success the header block ends with a `Schema validation: passed; rendered by <script path> (plugin <version>)` line, and the script prints the same path and version: that line is the record that validation ran. Fix the JSON, never the rendered text. Without Python, write those blocks by hand in the same shape and state that validation was not run (no `Schema validation:` line).
+Write every table, item, plan row and strength **only in the closing JSON**; never type them in Markdown. In a full audit give the judgments only (areas' `status`, `score`, `confidence`, `coverage`, `evidence`, `unknowns`; items; `overall.confidence`, `unknowns`, `noted_unknowns`; validation): the renderer **derives** and writes back into the JSON the area `counts`, `overall.score`, `score_inputs`, `denominator`, `capped`, `provisional`, `blockers` (every High/Critical item, plus any ids you add for an unmet mandatory requirement) and `readiness`, so leave them out (the examples below show them filled, as rendered). Put render markers where they belong and run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py <report> [--evidence-root <target repo root>]` (the plugin's own script by absolute path, whatever the working directory). It fills the derived fields, validates the JSON, then replaces each marker with the rendered block; re-running is idempotent and nothing is written while validation fails. It rewrites the file it is given, so render a draft in a writable scratch directory and copy the result to its destination; a read-only target never blocks the report. **At most 3 render runs:** fix the JSON each time; if the third still fails, deliver the draft with `validation failed: <the errors>` in place of the `Schema validation:` line and say so in the reply.
+
+**Evidence root** is the root of the target's repository: every `path:line[-line]` evidence reference is relative to it and is checked against it. A document or standard citation (`RFC 9110 §15`, `ADR-7:2`) must not look like `path:digits`; a path without whitespace followed by `:digits` is read as a file. On success the header block ends with a `Schema validation: passed; rendered by <script path> (plugin <version>)` line, and the script prints the same path and version: that line is the record that validation ran. Fix the JSON, never the rendered text. Without Python, write those blocks by hand in the same shape and state that validation was not run (no `Schema validation:` line).
 
 **State each proof once** and reference it elsewhere; do not repeat an explanation across Summary, Strengths, Validation and Plan.
 
@@ -90,10 +92,10 @@ Revision/environment, inspected artifacts, exclusions, system map.
 <!-- render:items -->
 
 ## Strengths
-Verified controls, each with the boundary tested.
+<!-- render:strengths -->
 
 ## Plan
-| Priority (Now/Next/Later) | Items | Why now / dependencies | Acceptance gate |; migration, mixed-version and rollback gates.
+<!-- render:plan -->
 
 ## Validation
 <!-- render:validation -->
@@ -105,7 +107,7 @@ Material unknowns, consequences, evidence needed.
 (closing JSON block)
 ```
 
-Required markers: header, scorecard, coverage, items (validation when it has entries). Compact form for narrow requests: keep those markers, fold Context/Strengths/Plan into short paragraphs, 400–800 words excluding JSON for one or two mechanisms; report "Not assessed" rather than manufacture a number.
+Required markers: header, scorecard, coverage, items, plan (plus `validation` and `strengths` when the JSON has entries; omit the Strengths section otherwise). Compact form for narrow requests: keep those markers, fold Context into a short paragraph, 400–800 words excluding JSON for one or two mechanisms; report "Not assessed" rather than manufacture a number.
 
 ### Triage audit layout and JSON
 
@@ -130,7 +132,7 @@ The 3–5 highest-impact flows traced, each with file:line.
 (closing JSON block)
 ```
 
-Required markers: header, items, not_examined. No scorecard, readiness or coverage inventory is needed; if `areas`, `overall` or `coverage_inventory` are present they are validated as in a full audit. Top 3–5 risks, ordered by severity; a healthy system yields few or no findings and says so.
+Required markers: header, items, not_examined (plus `validation` and `strengths` when the JSON has entries; `plan` is optional, each item block already shows its priority). No scorecard, readiness or coverage inventory is needed; if `areas`, `overall` or `coverage_inventory` are present they are validated as in a full audit. Top 3–5 risks, ordered by severity; a healthy system yields few or no findings and says so.
 
 ```json
 {
@@ -210,7 +212,7 @@ Required markers: header, assumptions, decisions, risks, validation. Focused pat
 }
 ```
 
-- `provenance`: `plugin_version` nonempty, `scope` area IDs considered.
+- `provenance`: `plugin_version` nonempty, `scope` area IDs considered, optional `models` as in a full audit.
 - `assumptions` (nonempty): `{id: A-n, statement, threshold, check}` — the claim, the value at which the choice changes, how to verify it.
 - `decisions` (nonempty): `{id: D-n, title, choice, options, why, tradeoff, revisit, rules}`, optional `assumptions` (A-n) and `validation` (V-n) references. `rules` are known rule IDs.
 - `risks` (may be empty): `{id: R-n, title, severity, rules, element, scenario, fix}`, optional `assumptions`; no file evidence is required for a proposal.
@@ -227,8 +229,8 @@ This focused example includes domain review (`--domain on`); for the default tec
   "depth": "full",
   "target": "orders-service",
   "date": "2026-11-01",
-  "provenance": {"revision": "unknown", "dirty": null, "environment": "source-only", "plugin_version": "0.6.0", "rubric_version": "2.0", "scope": ["RES", "CACHE"], "exclusions": ["runtime behavior"]},
-  "overall": {"score": 7.0, "confidence": "medium", "capped": false, "provisional": true, "readiness": "undetermined", "blockers": [], "unknowns": ["Runtime recovery not exercised"], "score_inputs": [7], "denominator": 1},
+  "provenance": {"revision": "unknown", "dirty": null, "environment": "source-only", "plugin_version": "0.6.0", "rubric_version": "2.0", "scope": ["RES", "CACHE"], "exclusions": ["runtime behavior"], "models": [{"role": "lead", "model": "opus", "effort": "medium"}]},
+  "overall": {"score": 7.0, "confidence": "medium", "capped": false, "provisional": true, "readiness": "undetermined", "blockers": [], "unknowns": [], "noted_unknowns": ["Runtime recovery not exercised: needs a running dependency"], "score_inputs": [7], "denominator": 1},
   "areas": [
     {"id": "RES", "status": "partial", "score": 7, "confidence": "medium", "counts": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "coverage": {"verified": 1, "violation": 0, "unverified": 1, "not_applicable": 0}, "evidence": ["client.go:24"], "unknowns": ["Runtime recovery not exercised"]},
     {"id": "CACHE", "status": "not_applicable", "score": null, "confidence": null, "counts": null, "coverage": {"verified": 0, "violation": 0, "unverified": 0, "not_applicable": 1}, "reason": "No cache and no requirement for one"}
@@ -244,6 +246,7 @@ This focused example includes domain review (`--domain on`); for the default tec
     "index_recommendation": null
   },
   "items": [],
+  "strengths": [{"control": "Outbound calls inherit the request deadline", "boundary": "Lookup client only; batch jobs not checked", "evidence": ["client.go:24"]}],
   "decisions": [],
   "validation": [{"id": "V-1", "requirement": "Recover within the agreed outage budget", "method": "Dependency fault injection", "acceptance": "Recovery meets the agreed budget", "status": "planned", "evidence": []}]
 }
@@ -252,16 +255,17 @@ This focused example includes domain review (`--domain on`); for the default tec
 Field rules (the validator enforces them; it checks contract consistency, not architectural truth). The rest of this section is the **full audit** contract; triage and design follow their own sections.
 
 - **Top level:** `schema_version` "3.0"; `mode` `audit|design`; audit also `depth` `full|triage`; `target`; `date`.
-- **Provenance:** `revision`, `environment`, `plugin_version` nonempty; `rubric_version` "2.0"; `dirty` bool/null; `scope` equals the area IDs; `exclusions` string array.
-- **Areas:** `coverage` counts selected ledger entries (not every possible check, not repository-wide completeness); assessed has no unverified entries; partial/unverified have unverified entries and nonempty `unknowns`; N/A has `null` counts, a `reason` and no items. `counts` exclude Info and count each item once in its primary area.
+- **Provenance:** `revision`, `environment`, `plugin_version` nonempty; `rubric_version` "2.0"; `dirty` bool/null; `scope` equals the area IDs; `exclusions` string array. Optional `models`: `[{role, model, effort?}]`, one row per role that ran (lead, each reviewer, each verifier) with the model the harness reported (`unknown` when it did not say); `effort` is what was requested, not a measurement.
+- **Areas:** `coverage` has exactly the four keys `verified`, `violation`, `unverified`, `not_applicable`, non-negative integers with a nonzero sum, and counts selected ledger entries (not every possible check, not repository-wide completeness); assessed has no unverified entries and at least one verified/violation; partial has unverified entries, at least one verified/violation and nonempty `unknowns`, a score ≤ 7 and confidence below high; unverified has unverified entries and nonempty `unknowns`; N/A has `null` counts, a `reason` and no items. Every area with a score and confidence (assessed, partial) also has a nonempty `evidence` array. Score caps in the primary area: Critical ≤ 3, High ≤ 5, Medium ≤ 7, Low ≤ 9. `counts` (derived) exclude Info and count each item once in its primary area.
 - **Rendering fields:** items add `impact` and `fix` (nonempty strings) and optional `also_areas` (area IDs); areas add optional `note` (the scorecard's key point); decisions add `options`, `why`, `tradeoff`, `revisit`. The renderer requires them; the validator ignores them.
-- **Items:** `{id, area, severity, rules, effort, title, fingerprint, confidence, evidence, verification}`; `severity` lowercase `critical|high|medium|low|info`; `confidence` `confirmed|likely`; `effort` `S|M|L`; `rules` and `evidence` nonempty string arrays of known rule IDs and `file:line[-line]` or document citations; `verification` names the check, acceptance and executed/planned status (may reference a V-n). Optional `severity_if` + `trigger`. IDs `F-n`.
+- **Items:** `{id, area, severity, rules, effort, priority, title, fingerprint, confidence, evidence, verification}`; `priority` `now|next|later` (optional on Info items); optional `depends_on` (other F-ids of the report, no cycles); duplicate `fingerprint`s are rejected; `severity` lowercase `critical|high|medium|low|info`; `confidence` `confirmed|likely`; `effort` `S|M|L`; `rules` and `evidence` nonempty string arrays of known rule IDs (BP/BAD/AP; a CHK check ID is not a rule) and `file:line[-line]` or document citations; `verification` names the check, acceptance and executed/planned status (may reference a V-n). Optional `severity_if` + `trigger`. IDs `F-n`.
 - **Validation:** `{id: V-n, requirement, method, acceptance, status, evidence}`; status `planned|passed|failed|not_run`; passed/failed need result evidence.
-- **overall:** `score`, `score_inputs`, `denominator`, `capped`, `provisional`, `confidence` as in Scoring; `blockers` includes every High/Critical item; `readiness` follows the Readiness rule; `supported_in_scope` requires all validation passed and nothing `not_covered`.
+- **overall:** derived by the renderer (see above): `score`, `score_inputs`, `denominator`, `capped`, `provisional`, `blockers`, `readiness`. Yours: `confidence` (null without numeric scores; not high when provisional), `unknowns` (material only, each naming what is unknown and why it matters; any entry means `undetermined`), optional `noted_unknowns`. `supported_in_scope` requires a numeric score, all validation passed and nothing `not_covered`.
 - **coverage_inventory** (required in a full audit):
-  - `units`: nonempty; `kind` is free text and may name documents (`document_sections`, `claims`) for an architecture-document audit; `{kind, total, checked, sampled, not_covered, owner}` with `checked + sampled + not_covered = total`; `sampled > 0` requires `sampling` (rule, denominator, why).
-  - `domain_modules`: `{id, owner, status: checked|sampled|not_covered}`; an empty array needs `domain_modules_reason`.
-  - `invariants`: `{id, statement, source, entry_points, status}` with ledger statuses; `source` is the spec, ADR, contract or user requirement. Empty needs `invariants_reason`.
-  - `gaps`: every sampled or uncovered unit kind and module; then `index_recommendation` is a required string saying what an indexed pass (for example over a graphify graph) would enumerate.
+  - `units`: nonempty; `kind` is free text and may name documents (`document_sections`, `claims`) for an architecture-document audit; `{kind, total, checked, sampled, not_covered, owner}` with `checked + sampled + not_covered = total`; `sampled > 0` requires `sampling` (rule, denominator, why) and `risk_tier: "read-only"`. **One rule for sampled:** a unit or module is `sampled` only when its risk tier is `read-only` and the tier's sampling rule is recorded; units that write money or state (`writes-state`) or cross a trust boundary (`trust-boundary`) are `checked` or `not_covered`, never sampled. A valid `sampled` does not block `supported_in_scope`; `not_covered` does.
+  - `domain_modules`: `{id, owner, status: checked|sampled|not_covered}` (`sampled` also needs `risk_tier: "read-only"`); an empty array needs `domain_modules_reason`.
+  - `invariants`: `{id, statement, source, entry_points, status}` with ledger statuses; `source` is the spec, ADR, contract or user requirement; `entry_points` is a nonempty string array. Empty needs `invariants_reason`.
+  - `gaps`: every sampled or uncovered unit kind and module; then optional `index_recommendation` says what a faster enumeration (a code index, if the project has one) would cover.
+- **strengths** (optional, rendered into Strengths): `{control, boundary, evidence}`: the verified control, the boundary tested and `file:line` evidence; re-read the code for the opposite hypothesis first.
 - **prior_reports** (optional): `{source, item, prior_severity, verdict: reproduced|refuted|not_applicable|unverifiable, evidence}`.
 - Schema 2.0 and 2.1 reports are rejected; regenerate rather than compare. Consumers distinguish `null` scores by `status` and never treat them as zero.

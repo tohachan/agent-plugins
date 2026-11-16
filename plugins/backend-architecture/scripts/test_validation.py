@@ -28,7 +28,7 @@ class ReportContractTests(unittest.TestCase):
         self.report['areas'][0].update(status='assessed',coverage={'verified':0,'violation':0,'unverified':0,'not_applicable':1})
         self.assertTrue(any('without applicable' in x for x in validate(self.report)))
     def item(self, severity='high'):
-        return {'id':'F-1','area':'RES','severity':severity,'rules':['RES-BAD-1'],'effort':'S','title':'Unbounded call','fingerprint':'orders:lookup:unbounded','confidence':'confirmed','evidence':['client.go:24'],'verification':'Planned: stalled dependency returns within the budget.'}
+        return {'id':'F-1','area':'RES','severity':severity,'rules':['RES-BAD-1'],'effort':'S','priority':'now','title':'Unbounded call','fingerprint':'orders:lookup:unbounded','confidence':'confirmed','evidence':['client.go:24'],'verification':'Planned: stalled dependency returns within the budget.'}
     def test_high_cannot_hide_in_mean(self):
         self.report['items']=[self.item()]
         self.report['areas'][0]['counts']['high']=1
@@ -97,11 +97,15 @@ class ReportContractTests(unittest.TestCase):
         u = self.ci()['units'][0]; u.update(checked=1, sampled=2)
         self.ci()['gaps'] = ['entry points sampled']; self.ci()['index_recommendation'] = 'Enumerate routes over a code index'
         self.assertTrue(any('sampling rule' in x for x in validate(self.report)))
-    def test_uncovered_requires_gaps_and_index(self):
+    def test_uncovered_requires_gaps_but_index_is_optional(self):
         u = self.ci()['units'][0]; u.update(checked=2, not_covered=1)
         errors = validate(self.report)
         self.assertTrue(any('coverage_inventory.gaps' in x for x in errors))
-        self.assertTrue(any('index_recommendation' in x for x in errors))
+        self.assertFalse(any('index_recommendation' in x for x in errors))
+        self.ci()['gaps'] = ['one entry point not read']
+        self.assertEqual(validate(self.report), [])
+        self.ci()['index_recommendation'] = ''
+        self.assertTrue(any('index_recommendation' in x for x in validate(self.report)))
     def test_uncovered_module_forbids_supported(self):
         self.ci()['domain_modules'][0]['status'] = 'not_covered'
         self.ci()['gaps'] = ['orders/lookup not reviewed']; self.ci()['index_recommendation'] = 'Graph-indexed pass over the module'
@@ -150,6 +154,86 @@ class ReportContractTests(unittest.TestCase):
         for value in [[],{}, {'areas':[None]}]:
             self.assertTrue(validate(value))
 
+class ContractRuleTests(unittest.TestCase):
+    """The rules the prose of shared/report.md states, one test each."""
+    def setUp(self): self.report = load_report(ROOT/'shared/report.md')
+    def ci(self): return self.report['coverage_inventory']
+    def item(self, ident='F-1', **kw):
+        base = {'id': ident, 'area': 'RES', 'severity': 'low', 'rules': ['RES-BAD-1'], 'effort': 'S', 'priority': 'next', 'title': 'Unbounded call ' + ident,
+                'fingerprint': 'orders:lookup:' + ident, 'confidence': 'confirmed', 'evidence': ['client.go:24'], 'verification': 'Planned.'}
+        base.update(kw); return base
+    def test_sampled_only_for_read_only_tier(self):
+        u = self.ci()['units'][0]; u.update(checked=1, sampled=2, sampling='every 3rd route, 3 of 3', owner='lead')
+        self.ci().update(gaps=['entry points sampled'])
+        self.assertTrue(any('risk_tier' in x for x in validate(self.report)))
+        u['risk_tier'] = 'writes-state'
+        self.assertTrue(any('risk_tier' in x for x in validate(self.report)))
+        u['risk_tier'] = 'read-only'
+        self.assertEqual(validate(self.report), [])
+    def test_sampled_module_needs_read_only_tier(self):
+        self.ci()['domain_modules'][0]['status'] = 'sampled'; self.ci()['gaps'] = ['orders/lookup sampled']
+        self.assertTrue(any('risk_tier' in x for x in validate(self.report)))
+        self.ci()['domain_modules'][0]['risk_tier'] = 'read-only'
+        self.assertEqual(validate(self.report), [])
+    def test_valid_sampling_does_not_block_supported_but_uncovered_does(self):
+        a = self.report['areas'][0]
+        a.update(status='assessed', confidence='high', coverage={'verified': 2, 'violation': 0, 'unverified': 0, 'not_applicable': 0}, unknowns=[])
+        self.report['validation'][0].update(status='passed', evidence=['Recovery test passed'])
+        self.report['overall'].update(readiness='supported_in_scope', provisional=False, confidence='high')
+        self.assertEqual(validate(self.report), [])
+        self.ci()['units'][0].update(checked=1, sampled=2, sampling='every 3rd route', risk_tier='read-only'); self.ci()['gaps'] = ['sampled']
+        self.assertEqual(validate(self.report), [])
+        self.ci()['units'][0].update(sampled=0, not_covered=2)
+        self.assertTrue(any('not covered' in x for x in validate(self.report)))
+    def test_priority_required_except_info_and_depends_on_checked(self):
+        item = self.item(); del item['priority']; self.report['items'] = [item]; self.report['areas'][0]['counts']['low'] = 1
+        self.assertTrue(any('priority' in x for x in validate(self.report)))
+        item['severity'] = 'info'; self.report['areas'][0]['counts']['low'] = 0
+        self.assertEqual(validate(self.report), [])
+        item['priority'] = 'soon'
+        self.assertTrue(any('priority' in x for x in validate(self.report)))
+    def test_depends_on_must_name_other_items_without_cycles(self):
+        a, b = self.item('F-1', depends_on=['F-9']), self.item('F-2')
+        self.report['items'] = [a, b]; self.report['areas'][0]['counts']['low'] = 2
+        self.assertTrue(any('depends_on' in x for x in validate(self.report)))
+        a['depends_on'] = ['F-1']; self.assertTrue(any('depends_on' in x for x in validate(self.report)))
+        a['depends_on'] = ['F-2']; b['depends_on'] = ['F-1']
+        self.assertTrue(any('cycle' in x for x in validate(self.report)))
+        b.pop('depends_on'); self.assertEqual(validate(self.report), [])
+    def test_strengths_need_control_boundary_evidence(self):
+        self.report['strengths'] = [{'control': 'Deadline propagation', 'boundary': '', 'evidence': []}]
+        errors = validate(self.report)
+        self.assertTrue(any('boundary' in x for x in errors) and any('evidence' in x for x in errors))
+    def test_models_are_role_model_rows(self):
+        self.report['provenance']['models'] = [{'role': 'lead'}]
+        self.assertTrue(any('provenance.models' in x for x in validate(self.report)))
+        self.report['provenance']['models'] = [{'role': 'lead', 'model': 'opus', 'effort': 'medium'}]
+        self.assertEqual(validate(self.report), [])
+    def test_noted_unknowns_do_not_move_readiness_but_material_ones_do(self):
+        self.report['areas'][0].update(status='assessed', confidence='high', coverage={'verified': 2, 'violation': 0, 'unverified': 0, 'not_applicable': 0}, unknowns=[])
+        self.report['validation'][0].update(status='passed', evidence=['Recovery test passed'])
+        self.report['overall'].update(readiness='supported_in_scope', provisional=False, confidence='high', unknowns=[], noted_unknowns=['Runtime behavior not observed'])
+        self.assertEqual(validate(self.report), [])
+        self.report['overall']['unknowns'] = ['Failover untested: a retry storm would go unseen']
+        self.assertTrue(any('undetermined' in x for x in validate(self.report)))
+    def test_check_ids_are_not_rules(self):
+        self.report['items'] = [self.item(rules=['RES-CHK-1'])]; self.report['areas'][0]['counts']['low'] = 1
+        self.assertTrue(any('unknown rule' in x for x in validate(self.report)))
+    def test_document_citations_are_not_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.report['areas'][0]['evidence'] = ['RFC 9110:15', 'client.go:1']
+            (Path(tmp)/'client.go').write_text('x\n' * 30)
+            self.assertEqual(validate(self.report, tmp), [])
+    def test_coverage_and_area_rules_stated_in_prose(self):
+        a = self.report['areas'][0]
+        a['coverage'] = {'verified': 1, 'violation': 0, 'unverified': 1}
+        self.assertTrue(any('invalid coverage' in x for x in validate(self.report)))
+        a['coverage'] = {'verified': 0, 'violation': 0, 'unverified': 0, 'not_applicable': 0}
+        self.assertTrue(any('empty coverage' in x for x in validate(self.report)))
+    def test_entry_points_required_for_invariants(self):
+        self.ci()['invariants'][0]['entry_points'] = []
+        self.assertTrue(any('entry_points' in x for x in validate(self.report)))
+
 class TriageContractTests(unittest.TestCase):
     def setUp(self):
         self.report = [x for x in load_examples(ROOT/'shared/report.md') if x.get('depth') == 'triage'][0]
@@ -163,7 +247,7 @@ class TriageContractTests(unittest.TestCase):
         del self.report['depth']
         self.assertTrue(any('depth' in x for x in validate(self.report)))
     def test_finding_needs_evidence_and_known_area(self):
-        self.report['items'] = [{'id': 'F-1', 'area': 'RES', 'severity': 'high', 'rules': ['RES-BAD-1'], 'effort': 'S', 'title': 'Unbounded call',
+        self.report['items'] = [{'id': 'F-1', 'area': 'RES', 'severity': 'high', 'rules': ['RES-BAD-1'], 'effort': 'S', 'priority': 'now', 'title': 'Unbounded call',
                                  'fingerprint': 'orders:lookup:unbounded', 'confidence': 'confirmed', 'evidence': [], 'verification': 'Planned.'}]
         self.assertTrue(any('evidence' in x for x in validate(self.report)))
         self.report['items'][0].update(evidence=['client.go:24'], area='NOPE')
