@@ -36,6 +36,11 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(self.path.read_text(), first)
         self.assertEqual(load_report(self.path), self.report)
 
+    def test_render_records_validation_and_script(self):
+        self.assertEqual(self.run_on(self.report), 0)
+        text = self.path.read_text()
+        self.assertIn('**Validation:** passed; rendered by `' + str(render_report.SCRIPT) + '` (plugin ', text)
+
     def test_domain_exclusion_is_visible_in_rendered_report(self):
         self.report['provenance']['exclusions'].append('Domain business logic (domain=off)')
         self.report['coverage_inventory'].update(

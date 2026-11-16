@@ -54,7 +54,7 @@ One root cause per item. Preserve F-n/R-n IDs of a prior report for recurring is
 
 ## Writing the report: data once, rendered tables
 
-Write every table and item **only in the closing JSON**; never type them in Markdown. Put render markers where they belong and run `python3 scripts/render_report.py <report> [--evidence-root <target>]`. It validates the JSON, then replaces each marker with the rendered block (header, scorecard with Overall row, coverage tables, F-n/R-n blocks ordered by severity, D-n blocks, validation table); re-running is idempotent and nothing is written while validation fails. Fix the JSON, never the rendered text. Without Python, write those blocks by hand in the same shape and state that validation was not run.
+Write every table and item **only in the closing JSON**; never type them in Markdown. Put render markers where they belong and run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py <report> [--evidence-root <target>]` (the plugin's own script by absolute path, whatever the working directory). It validates the JSON, then replaces each marker with the rendered block (header, scorecard with Overall row, coverage tables, F-n/R-n blocks ordered by severity, D-n blocks, validation table); re-running is idempotent and nothing is written while validation fails. On success the header block ends with a `Validation: passed; rendered by <script path> (plugin <version>)` line, and the script prints the same path and version: that line is the record that validation ran. Fix the JSON, never the rendered text. Without Python, write those blocks by hand in the same shape and state that validation was not run (no `Validation:` line).
 
 ```markdown
 # <Backend audit | Backend design>: <target>

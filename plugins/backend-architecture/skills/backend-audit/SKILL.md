@@ -8,20 +8,20 @@ effort: medium
 
 # Backend audit
 
-Paths are relative to the plugin root, two levels above this skill directory. Read `knowledge/README.md` and `shared/method.md` once. Read `shared/report.md` only when writing the report.
+Plugin files live under `${CLAUDE_PLUGIN_ROOT}` (the plugin root, two levels above this skill directory); every `knowledge/`, `shared/` and `scripts/` path below is under it, never in the target repository. Read `${CLAUDE_PLUGIN_ROOT}/knowledge/README.md` and `${CLAUDE_PLUGIN_ROOT}/shared/method.md` once. Read `${CLAUDE_PLUGIN_ROOT}/shared/report.md` only when writing the report.
 
 ## 1. Scope
 
-Map the request / `$ARGUMENTS` through the index aliases and symptom table. Resolve domain scope per `shared/method.md`: default `off`; `--domain on` or an explicit request to check business/domain logic enables it, `--domain off` excludes it. `all`, "full audit" and "проверь всё" alone keep it off. Apply this to focused and full audits.
+Map the request / `$ARGUMENTS` through the index aliases and symptom table. Resolve domain scope per `${CLAUDE_PLUGIN_ROOT}/shared/method.md`: default `off`; `--domain on` or an explicit request to check business/domain logic enables it, `--domain off` excludes it. `all`, "full audit" and "проверь всё" alone keep it off. Apply this to focused and full audits.
 
 - **Focused audit** — explicit areas or one mechanism: only those areas. Continue below.
-- **Full audit** — an unfocused service/repository audit, `all`, or an inventory too large for one pass: all 13 technical areas, plus domain passes only when enabled. Follow `shared/full-audit.md` (fixed passes, work file, subagents when available, coverage gate) instead of steps 2–3 here.
+- **Full audit** — an unfocused service/repository audit, `all`, or an inventory too large for one pass: all 13 technical areas, plus domain passes only when enabled. Follow `${CLAUDE_PLUGIN_ROOT}/shared/full-audit.md` (fixed passes, work file, subagents when available, coverage gate) instead of steps 2–3 here.
 
 Record revision, environment, assumptions and unavailable evidence. Build the system map — entry points, modules/services, stores, brokers, external clients, deployment and trust boundaries — as claims to verify, not findings. Build the coverage inventory (method, "Coverage inventory") before checking anything: count units from the project's own artifacts, locate domain sources only when enabled, use a code index if present, look for prior audits of the same target. Ask only for missing information that changes a material conclusion.
 
 ## 2. Trace and check (focused)
 
-Trace the critical flows in scope end to end. Read the selected areas' `knowledge/<prefix>/checks.md` and apply the method's domain scope filter before resolving references; resolve each in-scope cited rule by Grep on its ID, never by reading a whole `rules.md`. Look up a rule to confirm or refute a candidate, not only after deciding to report it. Apply the method's mechanism boundaries and, when domain review is enabled, the relevant checks in `shared/domain-audit.md`. Keep the ledger; test high-impact hypotheses when feasible and record inspected versus executed.
+Trace the critical flows in scope end to end. Read the selected areas' `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md` and apply the method's domain scope filter before resolving references; resolve each in-scope cited rule by Grep on its ID, never by reading a whole `rules.md`. Look up a rule to confirm or refute a candidate, not only after deciding to report it. Apply the method's mechanism boundaries and, when domain review is enabled, the relevant checks in `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md`. Keep the ledger; test high-impact hypotheses when feasible and record inspected versus executed.
 
 ## 3. Gate (focused)
 
@@ -29,8 +29,8 @@ Every in-scope unit has a terminal status. Before keeping a High/Critical candid
 
 ## 4. Judge and report
 
-Apply `shared/report.md`: realistic impact, minimal fix and verification per item; conditional severity (`severity_if`, `trigger`) for pending events; strengths instead of invented findings in a healthy area; unsupported hypotheses and owner decisions as open questions. Use the compact form for narrow requests.
+Apply `${CLAUDE_PLUGIN_ROOT}/shared/report.md`: realistic impact, minimal fix and verification per item; conditional severity (`severity_if`, `trigger`) for pending events; strengths instead of invented findings in a healthy area; unsupported hypotheses and owner decisions as open questions. Use the compact form for narrow requests.
 
-- **Render and validate before delivering:** write the narrative sections, render markers and closing JSON, then run `python3 scripts/render_report.py <report> --evidence-root <target>`. It validates and fills the tables and finding blocks; a failing report is not finished.
+- **Render and validate before delivering:** write the narrative sections, render markers and closing JSON, then run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py <report> --evidence-root <target>` (always the plugin's script by this absolute path, whatever the working directory; never a `scripts/` copy in the target). It validates and fills the tables and finding blocks; a failing report is not finished.
 - **Save** in a writable repository to `docs/audit/backend-audit-<YYYY-MM-DD>.md` unless the user chooses otherwise, without overwriting a different audit of the same day; otherwise return the full report in the reply.
 - **Chat summary:** domain review on/off, blockers, coverage gaps with the index recommendation, and the score. With domain off, say that business logic was excluded; the score covers technical scope only.
