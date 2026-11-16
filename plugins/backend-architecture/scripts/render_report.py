@@ -1,27 +1,36 @@
 #!/usr/bin/env python3
-"""Validate a report's closing JSON, then render its tables and item blocks into the Markdown in place.
+"""Fill a report's derived fields, validate its closing JSON, then render its tables and item blocks in place.
 
-The report author writes narrative sections plus the closing JSON and leaves markers such as
-`<!-- render:scorecard -->`. Each marker (or a previously rendered block) is replaced by
-`<!-- render:NAME -->` ... `<!-- /render:NAME -->`, so re-running is idempotent. Nothing is written
-when validation fails.
+The report author writes narrative sections plus the closing JSON (judgments only) and leaves markers such as
+`<!-- render:scorecard -->`. A full audit's derived fields (area counts, overall score, flags, blockers,
+readiness) are computed here and written back into the JSON block. Each marker (or a previously rendered
+block) is replaced by `<!-- render:NAME -->` ... `<!-- /render:NAME -->`, so re-running is idempotent.
+Nothing is written when validation fails; render a draft that lives in a writable scratch directory.
 """
+import copy
 import argparse
 import json
 from pathlib import Path
 import re
 import sys
-from validate_report import load_report, validate
+from validate_report import load_report, validate, derive, PRIORITIES
 
 NAMES = {'API': 'API design', 'DATA': 'Data storage & transactions', 'CACHE': 'Caching', 'MSG': 'Queues & messaging',
          'CONC': 'Concurrency', 'IDEM': 'Idempotency & consistency', 'RES': 'Resilience', 'SCALE': 'Scalability',
          'PERF': 'Performance', 'SEC': 'Security', 'OBS': 'Observability', 'ARCH': 'Architecture styles & boundaries',
          'OPS': 'Delivery & operations'}
-SECTIONS = ('header', 'scorecard', 'coverage', 'items', 'decisions', 'validation', 'assumptions', 'risks', 'not_examined')
-REQUIRED = {'full': ('header', 'scorecard', 'coverage', 'items'), 'triage': ('header', 'items', 'not_examined'),
+SECTIONS = ('header', 'scorecard', 'coverage', 'items', 'plan', 'strengths', 'decisions', 'validation', 'assumptions', 'risks', 'not_examined')
+REQUIRED = {'full': ('header', 'scorecard', 'coverage', 'items', 'plan'), 'triage': ('header', 'items', 'not_examined'),
             'design': ('header', 'assumptions', 'decisions', 'risks', 'validation')}
 
 def kind(r): return 'design' if r['mode'] == 'design' else r['depth']
+
+def required(r):
+    """Markers a report must carry: its shape's own, plus any section it has data for (so no rows vanish silently)."""
+    need = list(REQUIRED[kind(r)])
+    for name in ('validation', 'strengths'):
+        if r.get(name) and name not in need: need.append(name)
+    return need
 SCRIPT = Path(__file__).resolve()
 
 def plugin_version():
@@ -103,15 +112,26 @@ def items(r):
     out = []
     for i in sorted(r['items'], key=lambda i: ('critical', 'high', 'medium', 'low', 'info').index(i['severity'])):
         also = f"; also {', '.join(i['also_areas'])}" if i.get('also_areas') else ''
+        sched = f" · **Priority:** {i['priority'].title()}" + (f" · **Depends on:** {', '.join(i['depends_on'])}" if i.get('depends_on') else '') if i.get('priority') else ''
         block = [f"### {i['id']} · {i['title']} — {i['severity'].title()}",
                  f"- **Area:** {i['area']}{also} · **Rule:** {', '.join(i['rules'])} · **Confidence:** {i['confidence']}",
                  f"- **Evidence:** {'; '.join(i['evidence'])}",
                  f"- **Impact:** {i['impact']}", f"- **Fix:** {i['fix']}",
                  f"- **Verification:** {i['verification']}",
-                 f"- **Effort:** {i['effort']} · **Fingerprint:** {i['fingerprint']}"]
+                 f"- **Effort:** {i['effort']}{sched} · **Fingerprint:** {i['fingerprint']}"]
         if i.get('severity_if'): block.append(f"- **Severity if:** {i['severity_if'].title()} when {i['trigger']}")
         out.append('\n'.join(block))
     return '\n\n'.join(out)
+
+def plan(r):
+    rank = ('critical', 'high', 'medium', 'low', 'info')
+    rows = [[p.title(), f"{i['id']} · {i['title']} ({i['severity']})", i['effort'], i.get('depends_on'), i['verification']]
+            for p in PRIORITIES for i in sorted(r['items'], key=lambda i: rank.index(i['severity'])) if i.get('priority') == p]
+    if not rows: return '_No actions planned._'
+    return table(['Priority', 'Item', 'Effort', 'Depends on', 'Acceptance gate'], rows)
+
+def strengths(r):
+    return '\n'.join(f"- **{x['control']}** — {x['boundary']} ({'; '.join(x['evidence'])})" for x in r['strengths'])
 
 def decisions(r):
     if not r['decisions']: return '_No decisions recorded._'
@@ -161,8 +181,14 @@ def render(text, report):
         found.add(name)
         return f'<!-- render:{name} -->\n{globals()[name](report)}\n<!-- /render:{name} -->'
     out = MARKER.sub(sub, text)
-    missing = [n for n in REQUIRED[kind(report)] if n not in found]
+    missing = [n for n in required(report) if n not in found]
     return out, [f'missing marker <!-- render:{n} -->' for n in missing]
+
+def write_back(text, report):
+    """Replace the last fenced JSON block with the report as derived."""
+    blocks = list(re.finditer(r'```json\s*\n(.*?)\n```', text, re.S))
+    b = blocks[-1]
+    return text[:b.start(1)] + json.dumps(report, indent=1, ensure_ascii=False) + text[b.end(1):]
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
@@ -171,10 +197,13 @@ def main():
     args = ap.parse_args()
     try:
         report = load_report(args.report)
+        before = copy.deepcopy(report)
+        derive(report)
         errors = validate(report, args.evidence_root)
         if not errors: errors = render_errors(report)
         if not errors:
             text, errors = render(args.report.read_text(), report)
+        if not errors and report != before: text = write_back(text, report)
     except (OSError, ValueError, TypeError, KeyError) as exc:
         errors = [str(exc)]
     if errors:

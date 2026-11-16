@@ -3,6 +3,7 @@
 import argparse
 from collections import Counter
 from datetime import date
+import math
 from decimal import Decimal, ROUND_HALF_UP
 import json
 from pathlib import Path
@@ -16,6 +17,43 @@ RANK = {'info': 0, 'low': 1, 'medium': 2, 'high': 3, 'critical': 4}
 UNIT_STATUSES = ('checked', 'sampled', 'not_covered')
 LEDGER_STATUSES = ('verified', 'violation', 'unverified', 'not_applicable')
 PRIOR_VERDICTS = ('reproduced', 'refuted', 'not_applicable', 'unverifiable')
+PRIORITIES = ('now', 'next', 'later')
+RISK_TIERS = ('read-only', 'writes-state', 'trust-boundary')
+SAMPLED_TIER = 'read-only'
+EVIDENCE_REF = re.compile(r'([^\s:]+):(\d+)(?:-(\d+))?')  # a file citation: no whitespace in the path ('RFC 9110:15' is a document citation)
+
+def derive(report):
+    """Fill the fields the contract computes from the judgments (full audit only): area counts, the overall
+    mean/cap/flags/blockers and readiness. The renderer calls it before validating; the validator never does."""
+    if not isinstance(report, dict) or report.get('mode') != 'audit' or report.get('depth') != 'full': return
+    areas, items, validation = report.get('areas'), report.get('items'), report.get('validation', [])
+    if not all(isinstance(v, list) and all(isinstance(x, dict) for x in v) for v in (areas, items, validation)): return
+    if not isinstance(report.get('overall', {}), dict): return
+    counts = {a.get('id'): Counter() for a in areas if isinstance(a.get('id'), str)}
+    for i in items:
+        if i.get('area') in counts and i.get('severity') in SEVERITIES: counts[i['area']][i['severity']] += 1
+    inputs, provisional = [], False
+    for a in areas:
+        if a.get('id') not in counts: continue
+        a['counts'] = None if a.get('status') == 'not_applicable' else {k: counts[a['id']][k] for k in SEVERITIES}
+        provisional |= a.get('status') in ('partial', 'unverified')
+        if a.get('status') not in ('unverified', 'not_applicable') and type(a.get('score')) in (int, float) and math.isfinite(a['score']): inputs.append(a['score'])
+    o = report.setdefault('overall', {})
+    critical = any(i.get('severity') == 'critical' for i in items)
+    raw = (sum(Decimal(str(x)) for x in inputs) / len(inputs)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP) if inputs else None
+    o['score'] = float(min(raw, Decimal('4.0')) if critical else raw) if raw is not None else None
+    o.update(score_inputs=inputs, denominator=len(inputs), capped=critical, provisional=provisional)
+    found = [str(i.get('id')) for i in items if i.get('severity') in ('critical', 'high')]
+    extra = [b for b in o.get('blockers', []) if b not in found] if isinstance(o.get('blockers'), list) else []
+    o['blockers'] = found + extra
+    if not inputs: o['confidence'] = None
+    ci = report.get('coverage_inventory')
+    ci = ci if isinstance(ci, dict) else {}
+    uncovered = any(isinstance(u, dict) and type(u.get('not_covered')) is int and u['not_covered'] > 0 for u in ci.get('units') or []) \
+        or any(isinstance(m, dict) and m.get('status') == 'not_covered' for m in ci.get('domain_modules') or [])
+    if o['blockers'] or any(v.get('status') == 'failed' for v in validation): o['readiness'] = 'blocked'
+    elif provisional or o.get('unknowns') or uncovered or not inputs or not all(v.get('status') == 'passed' for v in validation): o['readiness'] = 'undetermined'
+    else: o['readiness'] = 'supported_in_scope'
 
 def coverage_inventory(report, require, strings):
     """Check the coverage inventory; return True when anything in scope is not covered."""
@@ -40,7 +78,10 @@ def coverage_inventory(report, require, strings):
         total, checked, samp, nc = nums
         require(checked + samp + nc == total, f'coverage unit {kind}: checked + sampled + not_covered must equal total (no unassigned units)')
         require(text(u.get('owner')), f'coverage unit {kind}: owner pass required')
-        if samp: require(text(u.get('sampling')), f'coverage unit {kind}: sampling rule and denominator required')
+        require(u.get('risk_tier') is None or u['risk_tier'] in RISK_TIERS, f'coverage unit {kind}: risk_tier must be one of {", ".join(RISK_TIERS)}')
+        if samp:
+            require(text(u.get('sampling')), f'coverage unit {kind}: sampling rule and denominator required')
+            require(u.get('risk_tier') == SAMPLED_TIER, f'coverage unit {kind}: sampled applies only to risk_tier {SAMPLED_TIER}; units that write state or money or cross a trust boundary are checked or not_covered')
         uncovered |= nc > 0
         sampled |= samp > 0
     modules = ci.get('domain_modules')
@@ -55,6 +96,7 @@ def coverage_inventory(report, require, strings):
         require(m.get('status') in UNIT_STATUSES, f'domain module {m.get("id")}: status must be checked/sampled/not_covered')
         uncovered |= m.get('status') == 'not_covered'
         sampled |= m.get('status') == 'sampled'
+        if m.get('status') == 'sampled': require(m.get('risk_tier') == SAMPLED_TIER, f'domain module {m.get("id")}: sampled applies only to risk_tier {SAMPLED_TIER}')
     invariants = ci.get('invariants')
     require(isinstance(invariants, list), 'coverage_inventory.invariants array required')
     invariants = invariants if isinstance(invariants, list) else []
@@ -71,14 +113,15 @@ def coverage_inventory(report, require, strings):
     require(strings(gaps), 'coverage_inventory.gaps must be a string array')
     if uncovered or sampled:
         require(strings(gaps) and bool(gaps), 'sampled or uncovered units must be listed in coverage_inventory.gaps')
-        require(text(ci.get('index_recommendation')), 'index_recommendation required when anything is sampled or not covered')
+    require(ci.get('index_recommendation') is None or text(ci['index_recommendation']), 'index_recommendation is optional; when present it must be a nonempty string')
     return uncovered
 
 def known_rules():
+    """Rule ids an item, risk or decision may cite (BP/BAD/AP); a check row (CHK) is a question, not a rule."""
     found = set()
     for p in (ROOT / 'knowledge').glob('*/*.md'):
-        found.update(re.findall(r'^`([A-Z]+-(?:BP|BAD|AP)-\d+)`|^\| ([A-Z]+-CHK-\d+) \|', p.read_text(), re.M))
-    return {x for pair in found for x in pair if x}
+        found.update(re.findall(r'^`([A-Z]+-(?:BP|BAD|AP)-\d+)`', p.read_text(), re.M))
+    return found
 
 def load_examples(path):
     """All fenced JSON blocks of a Markdown file (the documented examples), in order."""
@@ -93,6 +136,12 @@ def load_report(path):
         raise ValueError('No closing JSON report block')
     return json.loads(blocks[-1])
 
+def check_models(prov, require):
+    models = prov.get('models')
+    if models is not None:
+        require(isinstance(models, list) and all(isinstance(m, dict) and all(isinstance(m.get(k), str) and bool(m[k].strip()) for k in ('role', 'model')) and isinstance(m.get('effort', ''), str) for m in models),
+                'provenance.models must be an array of {role, model, optional effort}')
+
 def validate_design(report, require, strings, rules):
     """Design reports (schema 3.0): assumptions registry, decisions, risks, validation; no scores or readiness."""
     def text(v): return isinstance(v, str) and bool(v.strip())
@@ -101,6 +150,7 @@ def validate_design(report, require, strings, rules):
         require(False, 'provenance object required'); prov = {}
     require(text(prov.get('plugin_version')), 'provenance.plugin_version required')
     require(strings(prov.get('scope')) and bool(prov['scope']) and set(prov['scope']) <= AREAS, 'provenance.scope must be a nonempty array of known area ids')
+    check_models(prov, require)
     for banned in ('areas', 'overall', 'coverage_inventory', 'items'):
         require(banned not in report, f'design reports carry no {banned}; use assumptions, decisions, risks and validation')
     def rows(key, prefix, required):
@@ -167,7 +217,7 @@ def validate(report, evidence_root=None):
         require(strings(value) and bool(value), f'{label}: nonempty evidence array required')
         if not strings(value) or evidence_root is None: return
         for ref in value:
-            match = re.fullmatch(r'(.+):(\d+)(?:-(\d+))?', ref)
+            match = EVIDENCE_REF.fullmatch(ref)
             if not match: continue  # Config/document citations need human verification.
             p = (Path(evidence_root) / match[1]).resolve()
             try:
@@ -208,6 +258,7 @@ def validate(report, evidence_root=None):
     if triage: require(strings(provenance.get('scope')) and set(provenance['scope']) <= AREAS, 'provenance.scope must list known area ids (empty means all)')
     else: require(strings(provenance.get('scope')) and sorted(provenance['scope']) == sorted(area_ids), 'provenance.scope must match areas')
     require(strings(provenance.get('exclusions')), 'provenance.exclusions must be a string array')
+    check_models(provenance, require)
     rules = known_rules()
     counts = {a: Counter() for a in area_ids}
     fingerprints, item_ids = [], []
@@ -222,6 +273,8 @@ def validate(report, evidence_root=None):
         if isinstance(area, str) and area in counts and severity in SEVERITIES: counts[area][severity] += 1
         require(item.get('effort') in ('S', 'M', 'L'), f'{label}: invalid effort')
         require(item.get('confidence') in ('confirmed', 'likely'), f'{label}: invalid confidence')
+        if severity != 'info' or 'priority' in item: require(item.get('priority') in PRIORITIES, f'{label}: priority must be now/next/later')
+        if 'depends_on' in item: require(strings(item['depends_on']), f'{label}: depends_on must be an array of item ids')
         for key in ('title', 'fingerprint', 'verification'):
             require(isinstance(item.get(key), str) and bool(item[key].strip()), f'{label}: {key} required')
         fingerprints.append(str(item.get('fingerprint')))
@@ -234,6 +287,19 @@ def validate(report, evidence_root=None):
             require(cond in SEVERITIES and severity in RANK and RANK[cond] > RANK[severity], f'{label}: severity_if must be a severity higher than severity')
             require(isinstance(item.get('trigger'), str) and bool(item['trigger'].strip()), f'{label}: trigger required with severity_if')
     require(len(set(item_ids)) == len(item_ids), 'Duplicate item ids')
+    depends = {str(i.get('id')): i['depends_on'] for i in items if strings(i.get('depends_on'))}
+    for ident, deps in depends.items():
+        require(ident not in deps and set(deps) <= set(item_ids), f'{ident}: depends_on must name other items of this report')
+    def cyclic(node, path):
+        return node in path or any(cyclic(d, path | {node}) for d in depends.get(node, ()) if d in depends)
+    require(not any(cyclic(i, frozenset()) for i in depends), 'depends_on forms a cycle')
+    strengths = report.get('strengths')
+    if strengths is not None:
+        require(isinstance(strengths, list) and all(isinstance(x, dict) for x in strengths), 'strengths must be an array of objects')
+        for x in strengths if isinstance(strengths, list) else []:
+            if not isinstance(x, dict): continue
+            for key in ('control', 'boundary'): require(isinstance(x.get(key), str) and bool(x[key].strip()), f'strengths.{key} required (the control and the boundary tested)')
+            evidence(x.get('evidence'), f'strength {x.get("control")}')
     require(len(set(fingerprints)) == len(fingerprints), 'Duplicate root-cause fingerprints')
     inputs = []
     provisional = False
@@ -318,7 +384,8 @@ def validate(report, evidence_root=None):
     require(overall.get('provisional') is provisional, 'provisional must reflect coverage')
     require(overall.get('score_inputs') == inputs and type(overall.get('denominator')) is int and overall['denominator'] == len(inputs), 'Overall formula inputs/denominator mismatch')
     require(strings(overall.get('blockers')), 'blockers must be a string array')
-    require(strings(overall.get('unknowns')), 'unknowns must be a string array')
+    require(strings(overall.get('unknowns')), 'unknowns must be a string array of material unknowns, each with its reason')
+    require(strings(overall.get('noted_unknowns', [])), 'noted_unknowns must be a string array')
     if strings(overall.get('blockers')):
         require(set(blockers) <= set(overall['blockers']), 'High/Critical missing from blockers')
         require(len(set(overall['blockers'])) == len(overall['blockers']), 'Duplicate blockers')
