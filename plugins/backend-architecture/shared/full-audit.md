@@ -8,25 +8,25 @@ Before checking anything create `docs/audit/backend-audit-<YYYY-MM-DD>.work.md` 
 
 ## Phases, in fixed order
 
-0. **Inventory (lead).** System map — entry points, modules/services, stores, brokers, external clients, deployment and trust boundaries — as claims to verify, not findings. Unit inventory per `method.md`, extending the quick count `backend-audit` already took rather than recounting it; for an architecture document the units are its sections, claims and diagrams (document units are valid, with quoted text as evidence); domain sources and their invariants only with `domain=on`; available code index; prior audits of the same target. Assign every in-scope unit and, when enabled, domain module to exactly one pass below and write the assignment to the work file.
+0. **Inventory (lead).** System map — entry points, modules/services, stores, brokers, external clients, deployment and trust boundaries — as claims to verify, not findings. Unit inventory per `method.md`, extending the quick count `backend-audit` already took rather than recounting it; for an architecture document the units are its sections, claims and diagrams (document units are valid, with quoted text as evidence); domain sources and their invariants only with `domain=on`; available code index; prior audits of the same target. Give every in-scope unit its risk tier (`writes`, `boundary`, `read-only`; `method.md`, "Coverage inventory") and the tier's sampling rule for `read-only`, and write them to the work file. Units are not assigned to a single owner: each pass is given the full list of units of the kinds its checks name (see the table), read-only, plus the deep-check list of `writes` and `boundary` units that fall under its main risk.
 1. **Critical flows (lead).** Trace the 3–5 highest-impact flows end to end. Record each with file:line as claims for the passes to confirm or refute.
 2. **Area passes.** Each pass reads `${CLAUDE_PLUGIN_ROOT}/shared/method.md` and only its own `checks.md` files, resolves rule bodies by ID and gives every check of its areas a ledger state.
 
-   | Pass | Areas | Default unit kinds owned |
+   | Pass | Areas | Unit kinds its checks name (full list, no ownership) |
    | --- | --- | --- |
    | A · State & writes | DATA, IDEM, CONC, MSG | stores, consumers and jobs, relays/outboxes, transactions |
    | B · Edge & trust | API, SEC | entry points, authorization declarations, secrets and PII |
    | C · Runtime | RES, PERF, CACHE, SCALE | external dependencies, caches, hot paths, capacity |
    | D · Operations & structure | OBS, OPS, ARCH | CI/deploy/config artifacts, migrations in production, module boundaries |
 
-   A unit kind not listed goes to the pass whose areas own its main risk; record that choice in the work file.
+   A unit kind not listed goes to the pass whose areas own its main risk, and its status is recorded from that pass; record the choice in the work file. A pass whose deep-check list exceeds about 40 units is split into several reviewers by unit batch (same areas, same full reference list), so no single context carries hundreds of units.
 3. **Domain passes (only with `domain=on`).** One per domain module, or per batch of up to three small modules or one registry slice: `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md` plus any area rule that applies. With domain off, skip this phase entirely.
 4. **Coverage gate** (below). Nothing is scored before it passes.
 5. **Report** per `${CLAUDE_PLUGIN_ROOT}/shared/report.md`, built from the work file; render and validate before delivering.
 
 ## Execution with subagents
 
-When the Agent tool is available, run pass 2 and, only with domain on, pass 3 as parallel `backend-architecture:backend-reviewer` agents — one per area pass, one per domain batch — unless the user asked for a single-agent run. Each brief contains: the resolved plugin root path (the value of `${CLAUDE_PLUGIN_ROOT}`, spelled out because a subagent may not have the variable), `domain=on|off`, the pass's areas or domain checks, its unit list, domain sources only when enabled, the system map and flows labelled as claims to verify, and the work-file excerpt it needs. Briefs stay neutral: never characterise the code's quality ("defensive", "well-tested", "don't invent findings" — restraint is already the method's rule). Do not pass a `model` parameter on these Agent calls: it would override the agents' own model and effort settings. The lead appends each returned ledger to the work file.
+When the Agent tool is available, run pass 2 and, only with domain on, pass 3 as parallel `backend-architecture:backend-reviewer` agents — one per area pass, one per domain batch — unless the user asked for a single-agent run. Each brief contains: the resolved plugin root path (the value of `${CLAUDE_PLUGIN_ROOT}`, spelled out because a subagent may not have the variable), `domain=on|off`, the pass's areas or domain checks, its full reference list and deep-check batch, tier sampling rules, domain sources only when enabled, the system map and flows labelled as claims to verify, and the work-file excerpt it needs. Briefs stay neutral: never characterise the code's quality ("defensive", "well-tested", "don't invent findings" — restraint is already the method's rule). Do not pass a `model` parameter on these Agent calls: it would override the agents' own model and effort settings. The lead appends each returned ledger to the work file.
 
 Then send every High/Critical candidate, and every strength standing for a critical invariant, to `backend-architecture:backend-verifier` agents (each brief carries the resolved plugin root path, as for reviewers): up to five claims per agent, never to the reviewer that recorded them, giving code locations, the claim and `domain=on|off`, not the conclusion. With `domain=off`, business policies do not become verifier tasks.
 
@@ -38,7 +38,7 @@ Reviewers and verifiers have no shell. Anything that needs the target's code run
 
 ## Coverage gate
 
-1. **Merge.** Every in-scope unit and enabled domain module has an owner and a terminal status. A unit nobody took is reported as a gap, never dropped.
-2. **Name what was not enumerated.** Sampled or uncovered units go to gaps with the index recommendation; readiness then cannot be `supported_in_scope`.
+1. **Merge.** Every in-scope unit and enabled domain module has a terminal status, the strongest any pass reached. A unit no pass reached is `not_covered` and reported as a gap, never dropped.
+2. **Check the tiers.** `sampled` is accepted only for `read-only` units with the tier's sampling rule recorded; a `sampled` unit that writes money or state or crosses a trust boundary is a defect of the audit and goes back to a pass. Name each sampling rule and denominator in the report. `not_covered` units go to gaps with the index recommendation; readiness then cannot be `supported_in_scope`.
 3. **Independent re-verification** done as above; refuted items are removed or downgraded with the verifier's evidence; `out_of_scope` claims are excluded without being described as safe or refuted.
 4. **Reconcile prior reports.** First confirm the same codebase and revision; prior domain-only items in a `domain=off` run are `not_applicable` with the explicit scope exclusion, never refuted. Then classify each prior High/Critical as reproduced, refuted (naming the control), not applicable (feature or codebase absent, with evidence) or unverifiable.
