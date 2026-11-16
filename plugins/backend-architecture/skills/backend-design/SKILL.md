@@ -1,6 +1,6 @@
 ---
 name: backend-design
-description: Design backend systems, services and features from requirements, including pattern choices such as idempotent webhooks, outbox, caching or sharding. Use for new backend architecture, system-design practice and Russian requests such as "спроектируй сервис". Produces requirements arithmetic, an assumptions registry, decisions with trade-offs and a validation plan; no scorecard or readiness verdict. For a quick answer from one area's rules without a report, use backend-rules; for assessing existing implementations, use backend-audit.
+description: Design a backend system, service or multi-component feature from requirements — new architecture, capacity and trade-offs across several areas, system-design practice, Russian requests such as "спроектируй сервис". Produces requirements arithmetic, an assumptions registry, decisions with trade-offs and a validation plan; no scorecard or readiness verdict. Not for a single pattern question over 1–3 areas ("как сделать идемпотентные вебхуки?", outbox vs CDC, caching choice) — that is backend-rules, which offers to continue here — and not for assessing an existing implementation (backend-audit).
 argument-hint: "[system or feature, constraints]"
 model: opus
 effort: medium
@@ -11,6 +11,8 @@ effort: medium
 Plugin files live under `${CLAUDE_PLUGIN_ROOT}` (the plugin root, two levels above this skill directory); every `knowledge/`, `shared/` and `scripts/` path below is under it, never in the target repository. Read `${CLAUDE_PLUGIN_ROOT}/knowledge/README.md` and `${CLAUDE_PLUGIN_ROOT}/shared/method.md` once; the design section of `${CLAUDE_PLUGIN_ROOT}/shared/report.md` when writing the report.
 
 ## 1. Frame
+
+A request that is only a pattern question over 1–3 areas belongs to `backend-rules`; stay here when the user wants a design (several components, capacity, rollout, validation plan) or explicitly asks for a design document.
 
 Extract, marking assumptions and continuing independent work: actors, core flows and invariants; latency/availability, consistency and data-loss tolerance; average/peak traffic, volume and growth; trust boundaries and sensitive data; existing stack, team, budget, deadline. Ask a small batch of decision-changing questions, usually at most three.
 

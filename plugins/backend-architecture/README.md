@@ -32,9 +32,9 @@ For a local checkout use `/plugin marketplace add <path-to-repo>`, or load the p
 
 | Skill | Use it for | Example |
 | --- | --- | --- |
-| `backend-rules` | Checking code or a question against one area's rules, without a report. Loads only that area. | "сверься с правилами идемпотентности в charge.go" (check idempotency rules in charge.go) · `/backend-rules IDEM-BP-13` |
+| `backend-rules` | A pattern or "how do I do X" question, or a check of code or a plan against one to three areas' rules, without a report. Loads only those areas and offers `backend-design` if the question grows into a whole system. | "как сделать идемпотентные вебхуки?" (how to make webhooks idempotent?) · "сверься с правилами идемпотентности в charge.go" (check idempotency rules in charge.go) · `/backend-rules IDEM-BP-13` |
 | `backend-audit` | Reviewing code, a repo, infra/config or an architecture doc: one area, several, or all. | `/backend-audit all ./services/orders` · "проверь конкурентность и идемпотентность" (audit concurrency and idempotency) |
-| `backend-design` | Designing a system, service or feature, or applying a pattern. | `/backend-design notification service, 5M users` · "как сделать идемпотентные вебхуки?" (how to make webhooks idempotent?) |
+| `backend-design` | Designing a whole system, service or multi-component feature: capacity arithmetic, assumptions, decisions, rollout, validation plan. Not a single pattern question. | `/backend-design notification service, 5M users` · "спроектируй сервис уведомлений" (design a notification service) |
 
 A full audit follows `${CLAUDE_PLUGIN_ROOT}/shared/full-audit.md`: fixed passes (inventory → critical flows → four area-group passes → optional domain passes → coverage gate → report), a work file that holds the inventory and ledger across context compaction, and — when the Agent tool is available — parallel `backend-reviewer` agents per pass plus `backend-verifier` agents that independently try to refute every High/Critical candidate and critical strength. Without subagents the same passes run sequentially, each persisted before the next.
 

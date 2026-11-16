@@ -8,6 +8,7 @@
 - `backend-design` reads `shared/domain-audit.md` only when the requirements name privileged roles, money, approvals or retention obligations; the SEC-BP-21, DATA-BP-21 and IDEM-BP-21 paragraph is gone from its decide step.
 - `backend-design` is pinned to `opus`/`medium` like `backend-audit`, so model pinning is symmetric across the two report-producing skills.
 - Audit reports carry `depth: "full"` (today's contract, unchanged apart from the version).
+- Routing: a pattern question over 1–3 areas ("how do I make webhooks idempotent?") goes to `backend-rules`, which offers `backend-design` when it grows into a whole system. The `backend-rules` and `backend-design` descriptions no longer overlap, and `backend-rules` says "1–3 areas" consistently.
 
 ## 0.5.0
 
