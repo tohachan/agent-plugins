@@ -46,3 +46,42 @@ class DomainChecksTests(unittest.TestCase):
     def test_ticked_id_rejected(self): self.assertTrue(domain_check_errors('d', '| `SEC-CHK-21` | q | e | High |\n', {'sec'}, {}))
 
 if __name__ == '__main__': unittest.main()
+
+class ManifestTests(unittest.TestCase):
+    """Claude and Codex cache a plugin by version: manifests that disagree install a stale copy in one runtime."""
+    def setUp(self):
+        import json, tempfile
+        from pathlib import Path
+        self.json, self.tmp = json, tempfile.TemporaryDirectory()
+        self.market = Path(self.tmp.name); self.plugin = self.market / 'plugins' / 'p'
+        (self.plugin / 'skills').mkdir(parents=True)
+        self.write(self.plugin / '.claude-plugin/plugin.json', {'name': 'p', 'version': '1.0.0'})
+        self.write(self.plugin / '.codex-plugin/plugin.json', {'name': 'p', 'version': '1.0.0', 'skills': './skills/'})
+        self.write(self.market / '.claude-plugin/marketplace.json', {'plugins': [{'name': 'p', 'version': '1.0.0', 'source': './plugins/p'}]})
+        self.write(self.market / '.agents/plugins/marketplace.json', {'plugins': [{'name': 'p', 'version': '1.0.0', 'source': {'source': 'local', 'path': './plugins/p'}}]})
+    def tearDown(self): self.tmp.cleanup()
+    def write(self, path, data):
+        path.parent.mkdir(parents=True, exist_ok=True); path.write_text(self.json.dumps(data))
+    def errors(self, market=True):
+        from validate_repository import manifest_errors
+        return manifest_errors(self.plugin, self.market if market else None)
+    def test_consistent_ok(self): self.assertEqual(self.errors(), [])
+    def test_codex_version_drift_rejected(self):
+        self.write(self.plugin / '.codex-plugin/plugin.json', {'name': 'p', 'version': '1.1.0', 'skills': './skills/'})
+        self.assertTrue(any('disagree' in e for e in self.errors()))
+    def test_marketplace_version_drift_rejected(self):
+        self.write(self.market / '.agents/plugins/marketplace.json', {'plugins': [{'name': 'p', 'version': '0.9.0', 'source': {'source': 'local', 'path': './plugins/p'}}]})
+        self.assertTrue(any('disagree' in e for e in self.errors()))
+    def test_missing_codex_manifest_rejected(self):
+        (self.plugin / '.codex-plugin/plugin.json').unlink()
+        self.assertTrue(self.errors(market=False))
+    def test_missing_codex_marketplace_entry_rejected(self):
+        self.write(self.market / '.agents/plugins/marketplace.json', {'plugins': []})
+        self.assertTrue(any('found 0' in e for e in self.errors()))
+    def test_source_elsewhere_rejected(self):
+        self.write(self.market / '.claude-plugin/marketplace.json', {'plugins': [{'name': 'p', 'version': '1.0.0', 'source': './plugins/q'}]})
+        self.assertTrue(any('does not point' in e for e in self.errors()))
+    def test_codex_skills_path_missing_rejected(self):
+        self.write(self.plugin / '.codex-plugin/plugin.json', {'name': 'p', 'version': '1.0.0', 'skills': './nope/'})
+        self.assertTrue(any('skills path' in e for e in self.errors()))
+    def test_standalone_plugin_skips_marketplaces(self): self.assertEqual(self.errors(market=False), [])

@@ -1,0 +1,38 @@
+{
+  "name": "backend-architecture",
+  "version": "0.6.0",
+  "description": "Audit and design backend services against rules across 13 technical areas, or look up a single area's rules. Audit defaults to a triage of the top risks; a full audit adds a coverage inventory and scored report; design records assumptions, decisions and validation. Domain review is opt-in.",
+  "author": {
+    "name": "tohachan",
+    "url": "https://github.com/tohachan"
+  },
+  "homepage": "https://github.com/tohachan/agent-plugins/tree/main/plugins/backend-architecture",
+  "repository": "https://github.com/tohachan/agent-plugins",
+  "license": "MIT",
+  "keywords": [
+    "backend",
+    "architecture",
+    "audit",
+    "system-design",
+    "go",
+    "nodejs"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Backend Architecture",
+    "shortDescription": "Backend audit, design and rule lookup across 13 technical areas",
+    "longDescription": "Three skills: backend-audit (a triage of the top risks by default, --full for the scored protocol with coverage inventory and readiness), backend-design (requirements arithmetic, an assumptions registry, decisions and a validation plan) and backend-rules (one to three areas' rules for a pattern question or a short snippet). Domain review is opt-in with --domain on.",
+    "developerName": "tohachan",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Audit this service for the top backend risks.",
+      "How should I make these webhooks idempotent?"
+    ],
+    "websiteURL": "https://github.com/tohachan/agent-plugins"
+  }
+}
