@@ -14,7 +14,7 @@ For a local checkout use `/plugin marketplace add <path-to-repo>`, or load the p
 ## Requirements
 
 - Claude Code with plugin and marketplace support.
-- Python 3 (standard library only, no minimum version tested) to validate and render reports with `scripts/render_report.py`. Without it the audit still runs, but report validation is skipped and the tables must be written by hand.
+- Python 3 (standard library only, no minimum version tested) to validate and render reports with `${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py`. Without it the audit still runs, but report validation is skipped and the tables must be written by hand.
 - The Agent tool is optional. With it, full audits run parallel `backend-reviewer` and `backend-verifier` agents; without it the same passes run sequentially in one session.
 - No network access, third-party packages or subprocesses are needed by the scripts.
 
@@ -24,7 +24,7 @@ For a local checkout use `/plugin marketplace add <path-to-repo>`, or load the p
 - **Domain (business-logic) review is off by default**: `/backend-audit all` is a technical audit. Turn it on with `--domain on`; see Audit scope.
 - Audits are **static analysis** of code, configuration and documents you point at. They do not observe a running system, load, real data or production behavior, and a clean report is not a production sign-off.
 - The audit **reports and recommends; it does not edit or fix your code.**
-- Product defaults, limits and SDK behavior must be checked against your actual versions (`knowledge/sources.md`).
+- Product defaults, limits and SDK behavior must be checked against your actual versions (`${CLAUDE_PLUGIN_ROOT}/knowledge/sources.md`).
 - Structural validation of the plugin does not establish model quality; no speedup or accuracy improvement is claimed.
 - Not a penetration test, exploit validation or load test; security findings are code-level review claims.
 
@@ -36,7 +36,7 @@ For a local checkout use `/plugin marketplace add <path-to-repo>`, or load the p
 | `backend-audit` | Reviewing code, a repo, infra/config or an architecture doc: one area, several, or all. | `/backend-audit all ./services/orders` · "проверь конкурентность и идемпотентность" (audit concurrency and idempotency) |
 | `backend-design` | Designing a system, service or feature, or applying a pattern. | `/backend-design notification service, 5M users` · "как сделать идемпотентные вебхуки?" (how to make webhooks idempotent?) |
 
-A full audit follows `shared/full-audit.md`: fixed passes (inventory → critical flows → four area-group passes → optional domain passes → coverage gate → report), a work file that holds the inventory and ledger across context compaction, and — when the Agent tool is available — parallel `backend-reviewer` agents per pass plus `backend-verifier` agents that independently try to refute every High/Critical candidate and critical strength. Without subagents the same passes run sequentially, each persisted before the next.
+A full audit follows `${CLAUDE_PLUGIN_ROOT}/shared/full-audit.md`: fixed passes (inventory → critical flows → four area-group passes → optional domain passes → coverage gate → report), a work file that holds the inventory and ledger across context compaction, and — when the Agent tool is available — parallel `backend-reviewer` agents per pass plus `backend-verifier` agents that independently try to refute every High/Critical candidate and critical strength. Without subagents the same passes run sequentially, each persisted before the next.
 
 Models: `backend-audit` (the lead that merges passes and judges) runs on `opus` at `medium` effort for its turn; `backend-reviewer` on `sonnet`/`medium`; `backend-verifier` on `opus`/`medium`, since refuting High/Critical claims is the narrowest and most consequential step. `backend-rules` and `backend-design` set no model and inherit the session's. Change the pinned ones in the frontmatter; a `model` passed on an Agent call would override the agents' setting, so the protocol forbids it.
 
@@ -69,7 +69,7 @@ Token-budget comparisons and version history are in [CHANGELOG.md](CHANGELOG.md)
 
 ## Output
 
-Both report-producing skills follow `shared/report.md`. Tables, findings, decisions and validation are written once, in the closing JSON; `scripts/render_report.py` validates it and renders them into the Markdown at `<!-- render:… -->` markers. Sections: header, scorecard (assessed / partial / unverified / not applicable, numeric only when defensible), coverage (unit counts, domain modules, invariants with sources, gaps, index recommendation), F-n/R-n items, D-n decisions, plan, validation, open questions and a closing JSON summary (schema 2.1). Compact reports reduce prose, not the contract. Do not compare a design score with implemented readiness or treat an unverified score as zero.
+Both report-producing skills follow `${CLAUDE_PLUGIN_ROOT}/shared/report.md`. Tables, findings, decisions and validation are written once, in the closing JSON; `${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py` validates it and renders them into the Markdown at `<!-- render:… -->` markers. Sections: header, scorecard (assessed / partial / unverified / not applicable, numeric only when defensible), coverage (unit counts, domain modules, invariants with sources, gaps, index recommendation), F-n/R-n items, D-n decisions, plan, validation, open questions and a closing JSON summary (schema 2.1). Compact reports reduce prose, not the contract. Do not compare a design score with implemented readiness or treat an unverified score as zero.
 
 ## Layout
 

@@ -6,9 +6,9 @@ Governs every area file, including checklist "Fail" labels and default severitie
 
 `backend-audit` defaults to `domain=off`; `--domain on` or an explicit request to check business/domain logic enables it. An explicit `--domain off` excludes it. An explicit request names business/domain logic, policies or invariants as the thing to check ("audit the approval rules", "check business logic"); a generic technical request ("check access rights", "audit everything", "проверь права доступа") is not one and stays domain off. `all` selects all 13 technical areas, not domain review. Resolve scope before inventory and carry it into every reviewer/verifier brief and the work file. These defaults do not change backend-design or explicit backend-rules lookups.
 
-- **Off:** inspect technical mechanisms and their enforcement (authn/authz, tenant isolation, transactions, races, retries, ordering, timeouts, encryption, deletion-job mechanics, module boundaries). Read business code as needed to trace them, but do not derive or judge business policies, approval eligibility, separation of duties, business workflow liveness or domain retention obligations. Do not enumerate domain invariants, load `shared/domain-audit.md`, launch domain passes or ask domain-policy questions.
+- **Off:** inspect technical mechanisms and their enforcement (authn/authz, tenant isolation, transactions, races, retries, ordering, timeouts, encryption, deletion-job mechanics, module boundaries). Read business code as needed to trace them, but do not derive or judge business policies, approval eligibility, separation of duties, business workflow liveness or domain retention obligations. Do not enumerate domain invariants, load `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md`, launch domain passes or ask domain-policy questions.
 - **Checklist scope:** with domain off, skip SEC-CHK-21, SEC-CHK-23, IDEM-CHK-21 and DATA-CHK-21 as `not_applicable` with reason "domain review excluded". For mixed checks (including SEC-CHK-22, SEC-CHK-20 and ARCH checks), assess only the technical portion; keep bypass checks for authentication, authorization enforcement and tenant isolation. Cross-references do not re-enable domain review. Never describe the excluded portion as verified.
-- **On / design:** read `shared/domain-audit.md`; derive business invariants from the target's own sources. A focused audit stays within its selected areas/mechanisms.
+- **On:** read `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md`; derive business invariants from the target's own sources. A focused audit stays within its selected areas/mechanisms. **Design** reads it only when the requirements name privileged roles, money movement, approvals or retention obligations.
 
 ## Evidence
 
@@ -18,7 +18,7 @@ Governs every area file, including checklist "Fail" labels and default severitie
 - Start from the highest-impact flows. Trace each: entry/authentication → authorization → state reads → transaction/side effect → publication/ack → recovery; name invariant, owner, trust boundaries and authoritative state. Then use the checklists to find omissions.
 - A rule is a hypothesis about a failure: establish applicability, an actual violation and evidence that could refute it. Numbers for team sizes, hops, throughput, timeouts and topology are starting points, not acceptance limits. An alternative mechanism meeting the requirement passes.
 - Before calling a control missing, inspect its plausible owners: callers/wrappers, schema constraints, middleware/gateway, infrastructure, provider contract. An unavailable owner is an unknown; absence from a supplied snippet is not system-wide absence.
-- When a conclusion depends on a vendor limit, SDK behavior or version, consult `knowledge/sources.md`. Unverified defaults are assumptions, not findings.
+- When a conclusion depends on a vendor limit, SDK behavior or version, consult `${CLAUDE_PLUGIN_ROOT}/knowledge/sources.md`. Unverified defaults are assumptions, not findings.
 
 ## Coverage inventory
 
@@ -69,8 +69,8 @@ Use existing tests, contracts, traces and measurements. Run targeted checks when
 
 ## Judgement and reading economy
 
-- One root cause → one item with a primary area and all relevant rule IDs. Scoring lives in `shared/report.md` only.
+- One root cause → one item with a primary area and all relevant rule IDs. Scoring lives in `${CLAUDE_PLUGIN_ROOT}/shared/report.md` only.
 - **Conditional severity.** When severity depends on a pending configuration, rollout or growth event (feature flag, pilot allowlist, second tenant), report the current severity plus `severity_if` and `trigger`, and plan the item as a gate on that event.
 - A fix must close the failure window without opening another: check surrounding commit, retry, ordering, tenancy and cancellation behavior; preserve valid existing controls.
-- **Read by need, not by file.** Area entry points are `knowledge/<prefix>/checks.md` (audit) and `knowledge/<prefix>/decisions.md` (design). Never load a whole `rules.md` to resolve one ID: Grep it, e.g. pattern `` ^`IDEM-BP-13` `` in `knowledge/idem/rules.md` (add `-A 3` for anti-patterns, whose symptoms span lines). The prefix in a rule ID names its directory. Reuse evidence instead of searching the same mechanism once per area.
+- **Read by need, not by file.** Area entry points are `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md` (audit) and `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/decisions.md` (design). Never load a whole `rules.md` to resolve one ID: Grep it, e.g. pattern `` ^`IDEM-BP-13` `` in `${CLAUDE_PLUGIN_ROOT}/knowledge/idem/rules.md` (add `-A 3` for anti-patterns, whose symptoms span lines). The prefix in a rule ID names its directory. Reuse evidence instead of searching the same mechanism once per area.
 - Efficiency never justifies sampling an enumerable inventory.

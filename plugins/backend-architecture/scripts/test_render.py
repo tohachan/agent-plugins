@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from validate_report import load_report, ROOT
+from validate_report import load_report, load_examples, ROOT
 import render_report
 
 MARKERS = '\n\n'.join(f'<!-- render:{n} -->' for n in ('header', 'scorecard', 'coverage', 'items', 'validation'))
@@ -77,5 +77,55 @@ class RenderTests(unittest.TestCase):
         d = {'id': 'D-1', 'title': 'Inbox', 'choice': 'DB inbox', 'rules': ['IDEM-BP-7'], 'options': ['DB inbox', 'Redis'],
              'why': 'Atomic with effect', 'tradeoff': 'More rows', 'revisit': '> 5k events/s'}
         self.assertIn('**D-1 · Inbox** — Options: DB inbox; Redis · Chosen: DB inbox', render_report.decisions({'decisions': [d]}))
+
+def doc_for(report, names):
+    markers = '\n\n'.join(f'<!-- render:{n} -->' for n in names)
+    return f'# x\n\n{markers}\n\n```json\n{json.dumps(report, indent=1)}\n```\n'
+
+class ShapeRenderTests(unittest.TestCase):
+    def setUp(self):
+        examples = load_examples(ROOT / 'shared/report.md')
+        self.triage = [x for x in examples if x.get('depth') == 'triage'][0]
+        self.design = [x for x in examples if x.get('mode') == 'design'][0]
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self.tmp.name) / 'r.md'
+    def tearDown(self): self.tmp.cleanup()
+    def run_on(self, text):
+        import sys
+        self.path.write_text(text)
+        argv, sys.argv = sys.argv, ['render_report.py', str(self.path)]
+        try: return render_report.main()
+        finally: sys.argv = argv
+
+    def test_triage_renders_without_scores(self):
+        self.assertEqual(self.run_on(doc_for(self.triage, ('header', 'items', 'not_examined'))), 0)
+        out = self.path.read_text()
+        self.assertIn('audit (triage)', out)
+        self.assertIn('- Runtime recovery behavior', out)
+        self.assertNotIn('Overall', out)
+        self.assertIn('**Units counted:** 3 entry_points; 1 external_dependencies', out)
+
+    def test_triage_missing_not_examined_marker_writes_nothing(self):
+        text = doc_for(self.triage, ('header', 'items'))
+        self.assertEqual(self.run_on(text), 1)
+        self.assertEqual(self.path.read_text(), text)
+
+    def test_design_renders_assumptions_decisions_risks_without_scorecard(self):
+        self.assertEqual(self.run_on(doc_for(self.design, ('header', 'assumptions', 'decisions', 'risks', 'validation'))), 0)
+        out = self.path.read_text()
+        self.assertIn('| A-1 | Provider retries for up to 3 days', out)
+        self.assertIn('**D-1 · Dedup on provider event ID**', out)
+        self.assertIn('Assumptions: A-1', out)
+        self.assertIn('### R-1 · Inbox grows without a purge — Low', out)
+        self.assertNotIn('Readiness', out)
+        self.assertNotIn('Scorecard', out)
+
+    def test_design_without_risks_says_so(self):
+        self.design['risks'] = []
+        self.assertEqual(self.run_on(doc_for(self.design, ('header', 'assumptions', 'decisions', 'risks', 'validation'))), 0)
+        self.assertIn('_No residual risks established._', self.path.read_text())
+
+    def test_design_needs_assumptions_marker(self):
+        self.assertEqual(self.run_on(doc_for(self.design, ('header', 'decisions', 'risks', 'validation'))), 1)
 
 if __name__ == '__main__': unittest.main()

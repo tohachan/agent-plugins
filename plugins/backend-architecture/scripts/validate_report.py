@@ -17,17 +17,16 @@ UNIT_STATUSES = ('checked', 'sampled', 'not_covered')
 LEDGER_STATUSES = ('verified', 'violation', 'unverified', 'not_applicable')
 PRIOR_VERDICTS = ('reproduced', 'refuted', 'not_applicable', 'unverifiable')
 
-def coverage_inventory(report, mode, require, strings):
+def coverage_inventory(report, require, strings):
     """Check the coverage inventory; return True when anything in scope is not covered."""
     ci = report.get('coverage_inventory')
     if not isinstance(ci, dict):
-        require(False, 'coverage_inventory object required (schema 2.1)')
+        require(False, 'coverage_inventory object required in a full audit')
         return True
     def text(v): return isinstance(v, str) and bool(v.strip())
     def count(v): return type(v) is int and v >= 0
     units = ci.get('units')
-    if mode == 'audit':
-        require(isinstance(units, list) and bool(units), 'coverage_inventory.units must be a nonempty array in audit mode')
+    require(isinstance(units, list) and bool(units), 'coverage_inventory.units must be a nonempty array')
     units = units if isinstance(units, list) else []
     uncovered, sampled = False, False
     for u in units:
@@ -47,7 +46,7 @@ def coverage_inventory(report, mode, require, strings):
     modules = ci.get('domain_modules')
     require(isinstance(modules, list), 'coverage_inventory.domain_modules array required')
     modules = modules if isinstance(modules, list) else []
-    if mode == 'audit' and not modules:
+    if not modules:
         require(text(ci.get('domain_modules_reason')), 'empty domain_modules needs domain_modules_reason')
     for m in modules:
         if not isinstance(m, dict):
@@ -59,9 +58,7 @@ def coverage_inventory(report, mode, require, strings):
     invariants = ci.get('invariants')
     require(isinstance(invariants, list), 'coverage_inventory.invariants array required')
     invariants = invariants if isinstance(invariants, list) else []
-    if mode == 'design':
-        require(bool(invariants), 'design requires invariants derived from the requirements')
-    elif not invariants:
+    if not invariants:
         require(text(ci.get('invariants_reason')), 'empty invariants needs invariants_reason')
     for inv in invariants:
         if not isinstance(inv, dict):
@@ -83,6 +80,10 @@ def known_rules():
         found.update(re.findall(r'^`([A-Z]+-(?:BP|BAD|AP)-\d+)`|^\| `?([A-Z]+-CHK-\d+)`? \|', p.read_text(), re.M))
     return {x for pair in found for x in pair if x}
 
+def load_examples(path):
+    """All fenced JSON blocks of a Markdown file (the documented examples), in order."""
+    return [json.loads(b) for b in re.findall(r'```json\s*\n(.*?)\n```', Path(path).read_text(), re.S)]
+
 def load_report(path):
     text = Path(path).read_text()
     if Path(path).suffix == '.json':
@@ -91,6 +92,70 @@ def load_report(path):
     if not blocks:
         raise ValueError('No closing JSON report block')
     return json.loads(blocks[-1])
+
+def validate_design(report, require, strings, rules):
+    """Design reports (schema 3.0): assumptions registry, decisions, risks, validation; no scores or readiness."""
+    def text(v): return isinstance(v, str) and bool(v.strip())
+    prov = report.get('provenance')
+    if not isinstance(prov, dict):
+        require(False, 'provenance object required'); prov = {}
+    require(text(prov.get('plugin_version')), 'provenance.plugin_version required')
+    require(strings(prov.get('scope')) and set(prov['scope']) <= AREAS, 'provenance.scope must be an array of known area ids')
+    for banned in ('areas', 'overall', 'coverage_inventory', 'items'):
+        require(banned not in report, f'design reports carry no {banned}; use assumptions, decisions, risks and validation')
+    def rows(key, prefix, required):
+        value = report.get(key)
+        if not (isinstance(value, list) and all(isinstance(x, dict) for x in value)):
+            require(False, f'{key} must be an array of objects'); return []
+        if required: require(bool(value), f'design requires at least one entry in {key}')
+        ids = [str(x.get('id')) for x in value]
+        require(all(re.fullmatch(prefix + r'-\d+', i) for i in ids), f'{key}: ids must look like {prefix}-n')
+        require(len(set(ids)) == len(ids), f'{key}: duplicate ids')
+        return value
+    assumptions = rows('assumptions', 'A', True)
+    decisions = rows('decisions', 'D', True)
+    risks = rows('risks', 'R', False)
+    validation = rows('validation', 'V', True)
+    a_ids = {str(a.get('id')) for a in assumptions}
+    v_ids = {str(v.get('id')) for v in validation}
+    for a in assumptions:
+        for key in ('statement', 'threshold', 'check'):
+            require(text(a.get(key)), f'{a.get("id")}: {key} required')
+    for d in decisions:
+        label = str(d.get('id'))
+        for key in ('title', 'choice', 'why', 'tradeoff', 'revisit'):
+            require(text(d.get(key)), f'{label}: {key} required')
+        require(text(d.get('options')) or (strings(d.get('options')) and bool(d['options'])), f'{label}: options required')
+        refs = d.get('rules')
+        require(strings(refs) and bool(refs), f'{label}: rules required')
+        if strings(refs): require(set(refs) <= rules, f'{label}: unknown rule ids {set(refs) - rules}')
+        for key, known in (('assumptions', a_ids), ('validation', v_ids)):
+            if key in d: require(strings(d[key]) and set(d[key]) <= known, f'{label}: invalid {key} references')
+    for r in risks:
+        label = str(r.get('id'))
+        require(r.get('severity') in (*SEVERITIES, 'info'), f'{label}: invalid severity')
+        for key in ('title', 'element', 'scenario', 'fix'):
+            require(text(r.get(key)), f'{label}: {key} required')
+        refs = r.get('rules')
+        require(strings(refs) and bool(refs), f'{label}: rules required')
+        if strings(refs): require(set(refs) <= rules, f'{label}: unknown rule ids {set(refs) - rules}')
+        if 'assumptions' in r: require(strings(r['assumptions']) and set(r['assumptions']) <= a_ids, f'{label}: invalid assumptions references')
+    for v in validation:
+        label = str(v.get('id'))
+        require(v.get('status') in ('planned', 'passed', 'failed', 'not_run'), f'{label}: invalid validation status')
+        for key in ('requirement', 'method', 'acceptance'):
+            require(text(v.get(key)), f'{label}: {key} required')
+        require(strings(v.get('evidence')), f'{label}: evidence must be a string array')
+        if v.get('status') in ('passed', 'failed'): require(bool(v.get('evidence')), f'{label}: passed/failed needs result evidence')
+
+def validate_triage_extras(report, require, strings):
+    ne = report.get('not_examined')
+    require(strings(ne) and bool(ne), 'triage requires a nonempty not_examined list')
+    counted = report.get('units_counted', [])
+    ok = isinstance(counted, list) and all(isinstance(u, dict) and isinstance(u.get('kind'), str) and u['kind'].strip() and type(u.get('total')) is int and u['total'] >= 0 for u in counted)
+    require(ok, 'units_counted must be an array of {kind, total}')
+    fa = report.get('full_audit_suggested')
+    require(fa is None or (isinstance(fa, str) and bool(fa.strip())), 'full_audit_suggested must be null or a nonempty string')
 
 def validate(report, evidence_root=None):
     errors = []
@@ -113,37 +178,45 @@ def validate(report, evidence_root=None):
             except (ValueError, OSError, UnicodeError):
                 errors.append(f'{label}: inaccessible evidence {ref}')
     if not isinstance(report, dict): return ['Report must be an object']
-    require(report.get('schema_version') == '2.1', 'schema_version must be 2.1; 2.0 and older reports lack the coverage inventory and must be regenerated')
+    require(report.get('schema_version') == '3.0', 'schema_version must be 3.0; older reports must be regenerated')
     mode = report.get('mode')
     require(mode in ('audit', 'design'), 'mode must be audit/design')
     require(isinstance(report.get('target'), str) and bool(report['target'].strip()), 'target required')
     try: date.fromisoformat(report.get('date', ''))
     except (TypeError, ValueError): errors.append('date must be ISO YYYY-MM-DD')
-    areas, items, decisions, validation = [report.get(k) for k in ('areas', 'items', 'decisions', 'validation')]
+    if mode == 'design':
+        validate_design(report, require, strings, known_rules())
+        return errors
+    depth = report.get('depth')
+    require(depth in ('full', 'triage'), 'audit depth must be full or triage')
+    triage = depth == 'triage'
+    if triage: validate_triage_extras(report, require, strings)
+    areas, items, decisions, validation = [report.get(k, []) if triage else report.get(k) for k in ('areas', 'items', 'decisions', 'validation')]
     if not all(isinstance(v, list) and all(isinstance(x, dict) for x in v) for v in (areas, items, decisions, validation)):
         return errors + ['areas/items/decisions/validation must be arrays of objects']
-    require(bool(areas), 'At least one in-scope area required')
+    if not triage: require(bool(areas), 'At least one in-scope area required')
     area_ids = [a.get('id') for a in areas]
     if not all(isinstance(x, str) for x in area_ids): return errors + ['Area ids must be strings']
     require(len(set(area_ids)) == len(area_ids), 'Duplicate area ids')
     require(set(area_ids) <= AREAS, 'Unknown area ids')
     provenance = report.get('provenance', {})
     if not isinstance(provenance, dict): return errors + ['provenance must be an object']
-    for key in ('revision', 'environment', 'plugin_version', 'rubric_version'):
+    for key in ('revision', 'environment', 'plugin_version') + (() if triage else ('rubric_version',)):
         require(isinstance(provenance.get(key), str) and bool(provenance[key]), f'provenance.{key} required')
-    require(provenance.get('rubric_version') == '2.0', 'rubric_version must be 2.0')
+    if not triage: require(provenance.get('rubric_version') == '2.0', 'rubric_version must be 2.0')
     require('dirty' in provenance and (provenance['dirty'] is None or isinstance(provenance['dirty'], bool)), 'dirty must be bool/null')
-    require(strings(provenance.get('scope')) and sorted(provenance['scope']) == sorted(area_ids), 'provenance.scope must match areas')
+    if triage: require(strings(provenance.get('scope')) and set(provenance['scope']) <= AREAS, 'provenance.scope must list known area ids (empty means all)')
+    else: require(strings(provenance.get('scope')) and sorted(provenance['scope']) == sorted(area_ids), 'provenance.scope must match areas')
     require(strings(provenance.get('exclusions')), 'provenance.exclusions must be a string array')
     rules = known_rules()
     counts = {a: Counter() for a in area_ids}
     fingerprints, item_ids = [], []
     for item in items:
         label = str(item.get('id', '?'))
-        require(bool(re.fullmatch(('F' if mode == 'audit' else 'R') + r'-\d+', label)), f'{label}: invalid item id')
+        require(bool(re.fullmatch(r'F-\d+', label)), f'{label}: invalid item id')
         item_ids.append(label)
         area = item.get('area')
-        if not isinstance(area, str) or area not in counts: errors.append(f'{label}: primary area out of scope')
+        if not isinstance(area, str) or (area not in AREAS if triage else area not in counts): errors.append(f'{label}: primary area out of scope')
         severity = item.get('severity')
         require(severity in (*SEVERITIES, 'info'), f'{label}: invalid severity')
         if isinstance(area, str) and area in counts and severity in SEVERITIES: counts[area][severity] += 1
@@ -221,9 +294,8 @@ def validate(report, evidence_root=None):
         if 'validation' in decision:
             require(strings(decision['validation']) and set(decision['validation']) <= set(map(str, v_ids)), f'{ident}: invalid validation references')
     require(len(set(d_ids)) == len(d_ids), 'Duplicate decision ids')
-    if mode == 'audit': require(not decisions, 'Audit decisions must be empty')
-    if mode == 'design': require(bool(validation), 'Design requires at least one validation scenario')
-    uncovered = coverage_inventory(report, mode, require, strings)
+    require(not decisions, 'Audit decisions must be empty')
+    uncovered = coverage_inventory(report, require, strings) if not triage or 'coverage_inventory' in report else False
     priors = report.get('prior_reports')
     if priors is not None:
         require(isinstance(priors, list) and all(isinstance(x, dict) for x in priors), 'prior_reports must be an array of objects')
@@ -235,6 +307,7 @@ def validate(report, evidence_root=None):
             require(strings(x.get('evidence')) and bool(x.get('evidence')), 'prior_reports.evidence must be a nonempty string array')
     overall = report.get('overall', {})
     if not isinstance(overall, dict): return errors + ['overall must be an object']
+    if triage and 'overall' not in report: return errors
     critical = any(i.get('severity') == 'critical' for i in items)
     blockers = [i['id'] for i in items if i.get('severity') in ('critical', 'high')]
     raw = (sum(Decimal(str(x)) for x in inputs) / len(inputs)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP) if inputs else None
