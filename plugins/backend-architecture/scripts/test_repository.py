@@ -13,5 +13,9 @@ class DecisionRulesColumnTests(unittest.TestCase):
     def test_prose_rejected(self): self.assertTrue(self.check('| a | b | c | d | see ARCH-BP-1 |\n'))
     def test_missing_column_rejected(self): self.assertTrue(self.check('| a | b | c | d |\n', '| Decision | Options | Choose … when | Trade-off |\n| --- | --- | --- | --- |\n'))
     def test_short_row_rejected(self): self.assertTrue(self.check('| a | b | c | ARCH-BP-1 |\n'))
+    def test_trailing_whitespace_ok(self): self.assertEqual(self.check('| a | b | c | d | ARCH-BP-1 |  \n'), [])
+    def test_header_only_rejected(self): self.assertTrue(self.check(''))
+    def test_missing_separator_rejected(self): self.assertTrue(self.check('| a | b | c | d | ARCH-BP-1 |\n', HEAD.splitlines()[0] + '\n'))
+    def test_dash_mixed_with_id_rejected(self): self.assertTrue(self.check('| a | b | c | d | \u2014, ARCH-BP-1 |\n'))
 
 if __name__ == '__main__': unittest.main()

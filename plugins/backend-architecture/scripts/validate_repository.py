@@ -14,13 +14,14 @@ PATH_REF = re.compile(r'`((?:shared|knowledge|scripts|agents)/[A-Za-z0-9_./-]+\.
 RULES_CELL_ID = re.compile(r'[A-Z]+-(?:BP|BAD|AP)-\d+')
 
 def decision_errors(label, text, definitions):
-    """Every Key decisions row ends in a Rules cell: known rule IDs, or an explicit dash."""
-    errors, rows = [], [l for l in text.splitlines() if l.startswith('|')]
-    if not rows or [c.strip() for c in rows[0].strip('|').split('|')][-1] != 'Rules':
-        return [f'{label}: decisions table must end with a Rules column']
-    width = len(rows[0].strip('|').split('|'))
+    """The Key decisions table ends in a Rules column: every row lists known rule IDs, or an explicit dash."""
+    errors, rows = [], [l.strip() for l in text.splitlines() if l.strip().startswith('|')]
+    split = lambda l: [c.strip() for c in l.strip('|').split('|')]
+    if len(rows) < 3 or split(rows[0])[-1] != 'Rules' or not set(''.join(split(rows[1]))) <= set('-: '):
+        return [f'{label}: decisions table needs a header ending in Rules, a separator and at least one row']
+    width = len(split(rows[0]))
     for line in rows[2:]:
-        cells = [c.strip() for c in line.strip('|').split('|')]
+        cells = split(line)
         if len(cells) != width: errors.append(f'{label}: row has {len(cells)} cells, expected {width}: {cells[0]}'); continue
         cell = cells[-1]
         if cell == '\u2014': continue
