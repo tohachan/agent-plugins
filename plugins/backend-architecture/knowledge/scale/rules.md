@@ -10,7 +10,7 @@
 
 `SCALE-BP-3` — **Keep the request tier stateless.** Any instance must serve any request and be killable at any time. How: sessions in Redis/DB or signed short-lived tokens (SEC); uploads and generated files in object storage via presigned URLs; rate limits, locks, dedupe sets and job schedules in a shared store or a single scheduler; in-process caches only as disposable accelerators (CACHE).
 
-`SCALE-BP-4` — **Autoscale on the signal that saturates first.** CPU stays at 20% while an I/O-bound service drowns. How: CPU target 50–70% for CPU-bound; in-flight requests or RPS per pod for I/O-bound (Knative concurrency target, KEDA Prometheus scaler); consumer lag or oldest-message age for workers (KEDA Kafka/SQS/RabbitMQ scalers); `minReplicas` ≥ 2–3 spread across zones; scale up fast (stabilization 0–60 s), scale down slowly (5–10 min, the HPA default is 300 s).
+`SCALE-BP-4` — **Autoscale on the signal that saturates first.** CPU stays at 20% while an I/O-bound service drowns. How: CPU target 50–70% for CPU-bound; in-flight requests or RPS per pod for I/O-bound (Knative concurrency target, KEDA Prometheus scaler); consumer lag or oldest-message age for workers (KEDA Kafka/SQS/RabbitMQ scalers); `minReplicas` from the availability requirement (RES-BP-15), spread across the required failure domains; scale up fast (stabilization 0–60 s), scale down slowly (5–10 min, the HPA default is 300 s).
 
 `SCALE-BP-5` — **Know what autoscaling cannot do.** Reaction time = scrape interval (15–60 s) + decision + node provisioning (1–5 min with Cluster Autoscaler/Karpenter) + image pull + startup + warm-up, so it follows ramps of minutes, not spikes of seconds. How: keep headroom, pre-scale for known events, shed load at the edge (RES), cap `maxReplicas` by the downstream budget (SCALE-BP-13); adding pods never fixes a saturated database.
 
@@ -58,7 +58,7 @@
 
 `SCALE-BAD-6` — **`maxReplicas` raised without connection math.** Scale-out exhausts `max_connections` ("sorry, too many clients already") and the autoscaler turns a spike into an outage. → Instead: SCALE-BP-13.
 
-`SCALE-BAD-7` — **`minReplicas: 1` or scale-to-zero on a latency-sensitive API.** Cold starts on first request, no zone redundancy, every deploy is a gap. → Instead: ≥2–3 replicas across zones (SCALE-BP-4).
+`SCALE-BAD-7` — **`minReplicas: 1` or scale-to-zero on a latency-sensitive API.** Cold starts on first request, no zone redundancy, every deploy is a gap. → Instead: replicas and failure-domain spread sized from the availability requirement (SCALE-BP-4, RES-BP-15); a singleton is a finding only where that requirement is not met.
 
 `SCALE-BAD-8` — **`hash(key) % nodeCount` for placement.** Adding or removing one node remaps almost every key: mass cache misses or a full data reshuffle. → Instead: SCALE-BP-9.
 

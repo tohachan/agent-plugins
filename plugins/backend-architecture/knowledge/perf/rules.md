@@ -30,7 +30,7 @@
 
 `PERF-BP-13` — **Reduce allocations before tuning the GC.** Allocation rate drives GC CPU and pause-related tail latency. How: read `alloc_space` profiles; preallocate slices/maps with capacity, reuse buffers (`sync.Pool` for large short-lived buffers), avoid `[]byte`↔`string` round trips and `fmt.Sprintf` in hot loops (`strconv`, `strings.Builder`), check escapes with `go build -gcflags=-m`; in Node avoid per-request closures/object churn in hot paths, reuse `Buffer`s, avoid megamorphic object shapes.
 
-`PERF-BP-14` — **Set GOMEMLIMIT in containers; tune GOGC deliberately.** Without a limit the Go heap can grow to ~2× live heap at `GOGC=100` and the pod is OOM-killed before GC reacts. How: `GOMEMLIMIT` ≈ 80–90% of the container memory limit (leave room for non-heap: stacks, cgo, mmap); raise `GOGC` (200–400) only when GC CPU > ~10–20% and memory allows; avoid `GOGC=off` + limit on services whose live heap can approach the limit (GC thrash). Go 1.26 enables the Green Tea collector by default; re-benchmark GC-heavy services on upgrade.
+`PERF-BP-14` — **Set GOMEMLIMIT in containers; tune GOGC deliberately.** Without a limit the Go heap can grow to ~2× live heap at `GOGC=100` and the pod is OOM-killed before GC reacts. How: `GOMEMLIMIT` ≈ 90% of the container memory limit (lower toward 80% when non-heap use is large) (leave room for non-heap: stacks, cgo, mmap); raise `GOGC` (200–400) only when GC CPU > ~10–20% and memory allows; avoid `GOGC=off` + limit on services whose live heap can approach the limit (GC thrash). Go 1.26 enables the Green Tea collector by default; re-benchmark GC-heavy services on upgrade.
 
 `PERF-BP-15` — **See CONC-BP-16 (canonical mechanism).** Measure event-loop delay alongside the hot-path profile.
 
