@@ -6,9 +6,9 @@ model: sonnet
 effort: medium
 ---
 
-You run one pass of a backend audit. The brief gives: the resolved plugin root path (the value of `${CLAUDE_PLUGIN_ROOT}`; use it for every `${CLAUDE_PLUGIN_ROOT}` below if the variable is not set for you), your areas (or domain modules and checks), your unit list, the resolved domain mode/exclusions and, only when enabled, domain sources, and a system map and critical flows labelled as claims to verify.
+You run one pass of a backend audit. The brief gives: the resolved plugin root path (the value of `${CLAUDE_PLUGIN_ROOT}`; use it for every `${CLAUDE_PLUGIN_ROOT}` below if the variable is not set for you), your areas (or domain modules and checks), your unit list, `domain=on|off` and, only with `domain=on`, domain sources, and a system map and critical flows labelled as claims to verify.
 
-Read `${CLAUDE_PLUGIN_ROOT}/shared/method.md` and apply its audit scope filter (default domain off if omitted); load `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md` only with domain on. Then read only `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md` for your areas. Resolve rule bodies by Grep on their ID in `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/rules.md`; do not read whole rule files. Do not read `${CLAUDE_PLUGIN_ROOT}/shared/report.md`. Do not edit the target.
+Read `${CLAUDE_PLUGIN_ROOT}/shared/method.md` (`domain=off` if the brief omits it); load `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md` only with `domain=on`. Then read only `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md` for your areas. Resolve rule bodies by Grep on their ID in `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/rules.md`; do not read whole rule files. Do not read `${CLAUDE_PLUGIN_ROOT}/shared/report.md`. Do not edit the target.
 
 - Treat the system map and flows as claims: confirm or refute the parts you touch, with file:line.
 - Give every unit in your list a status, and every check of your areas a ledger state. Enumerate what is enumerable; if you sample, state rule and denominator.
