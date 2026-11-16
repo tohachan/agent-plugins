@@ -47,4 +47,29 @@ For a meaningful comparison use the same model/version, limits, tools, fixture a
 
 Measure per-case supported defect recall, unsupported/false findings, minimal-fix correctness, treatment of unknowns and preserved guarantees. Healthy cases specifically penalize invented High/Critical findings. Aggregate separately by skill, scope and healthy/defective/incomplete context. Report raw counts, run variability and token cost per supported useful finding; a single composite score hides trade-offs. Count incomplete/failed runs rather than silently dropping them.
 
-No baseline or improvement percentages are claimed by this repository. Record actual run results outside the skill-loading path with model/plugin versions and fixture hashes. Local deterministic checks validate the harness and report contract, not model effectiveness.
+The first measured run is below (one run per case per arm; no improvement percentage is claimed from n=1). Record actual run results outside the skill-loading path with model/plugin versions and fixture hashes. Local deterministic checks validate the harness and report contract, not model effectiveness.
+
+## Measured results: A (no plugin) vs C (plugin), 2026-11-16
+
+Method. Plugin under test: commit `64bcc08` (agp-integration). Model `claude-sonnet-5-5` for both arms (C's reviewer/verifier subagents keep their pinned models; Opus appears in C-agent). One run per case per arm, `claude -p --output-format json`, tools Read/Glob/Grep/Skill/Write/Edit/Bash (+Agent in the "with Agent" variant), fixture hash (orders-service) `a187e6f290d4`. Arm A runs with a clean config dir, no plugin dir, a locked `plugins/` directory (the account auto-syncs the plugin into any config dir, which leaked it into arm A in the first rounds; those rounds are discarded and not counted) and deny rules on arm A: no Read/Glob/Grep under `/home/agent/.claude`, `/Users/tohachen`, `/home/agent/.local`, and no Bash command mentioning `projects/agent-plugins`, `.claude/plugins`, `.claude/skills`, `/Users/tohachen`, `/.local/state`. Each output was graded by a fresh subagent per output (Sonnet), blind to arm, against the case's graders from the output text and fixture only. Raw runs: outside the repository (`eval-runs/`).
+
+Counts. Recall = graders met / graders of the case (full audit: the 8 seeded-defect graders 01-08; the 9 protocol graders 09-17 are not scored from text, see below). False = claims the grader found wrong or unsupported. Useful = distinct correct findings or decisions. Tokens = input + output + cache creation + cache read, subagents included (`modelUsage`); "fresh" omits cache reads (fresh is skewed by cache warm-up between parallel runs, use total for comparison).
+
+| Path | Case | Recall A | Recall C | False A / C | Useful A / C | Tokens A | Tokens C | Tokens per useful A / C |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| rules | idempotency-lookup | 1/3 | 3/3 | 0 / 0 | 3 / 6 | 53.8k | 89.3k | 17.9k / 14.9k |
+| focused audit | consumer-messaging-only | 3/5 | 3/5 | 0 / 0 | 6 / 7 | 53.9k | 58.3k | 9.0k / 8.3k |
+| focused audit | gateway-owned-auth | 2/3 | 2/3 | 0 / 1 | 7 / 6 | 55.2k | 59.2k | 7.9k / 9.9k |
+| focused audit | healthy-boundaries | 3/3 | 3/3 | 0 / 0 | 6 / 8 | 55.7k | 59.7k | 9.3k / 7.5k |
+| design | unknown-provider-outcome | 2/3 | 3/3 | 0 / 1 | 10 / 10 | 22.1k | 45.7k | 2.2k / 4.6k |
+| design | ordered-outbox-deltas | 3/3 | 3/3 | 2 / 2 | 9 / 9 | 23.6k | 130.1k | 2.6k / 14.5k |
+| full audit, no Agent | orders-service-full-audit | 7/8 | 7/8 | 1 / 0 | 24 / 14 | 63.2k | 791.0k | 2.6k / 56.5k |
+| full audit, with Agent | orders-service-full-audit | 7/8 | 7/8 | 0 / 1 | 24 / 13 | 68.3k | 2,639.3k | 2.8k / 203.0k |
+
+Fresh tokens (without cache reads) for the full audit: A 17.8k / 16.6k; C 96.6k (no Agent) / 346.7k (with Agent, 7 subagents).
+
+Reading.
+- The plugin loaded its skill in 5 of 8 C runs. In all three focused-audit cases (consumer-messaging-only, gateway-owned-auth, healthy-boundaries) C made no Skill call: those C and A runs are the same behaviour, and their numbers are equal. The routing miss is itself a result.
+- Rules and design: C gains where the case asks for rule IDs or a test plan (idempotency-lookup 3/3 vs 1/3: A gave no rule IDs and did not treat a timeout as unknown; unknown-provider-outcome 3/3 vs 2/3: A gave no test plan). Elsewhere both arms are equal.
+- Full audit: both arms find the same 7 of 8 seeded defects (both miss the partition-prefix commit fix, 07). C costs 12.5x (no Agent) and 38.6x (with Agent) the tokens of A. Graders saw only the final text, so the protocol graders 09-17 were not scored for either arm. By trace, C wrote a work file, ran passes (sequentially, or via 4 reviewers and 3 verifiers with Agent), rendered and validated the report; A did none of this and answered with a hand-written table.
+- n=1 per cell: differences of one grader item or one false finding are noise. No ambiguous result was rerun.
