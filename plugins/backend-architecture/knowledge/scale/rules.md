@@ -76,45 +76,21 @@
 
 ## Anti-patterns
 
-`SCALE-AP-1` — **Scaling the stateless tier to fix a stateful bottleneck.**
-- Symptoms: incident playbook says "add pods"; DB CPU or connections at 100% while app pods multiply; latency worsens after scale-out.
-- Why it hurts: more clients means more contention, more connections and more retries against the real bottleneck.
-- Way out: identify the saturated resource (USE), cap app concurrency to downstream capacity (SCALE-BP-13, RES), then reduce or redistribute that resource's load (SCALE-BP-6, SCALE-BP-7).
+`SCALE-AP-1` — **Scaling the stateless tier to fix a stateful bottleneck.** Symptoms: incident playbook says "add pods"; DB CPU or connections at 100% while app pods multiply; latency worsens after scale-out. Why it hurts: more clients means more contention, more connections and more retries against the real bottleneck. Way out: identify the saturated resource (USE), cap app concurrency to downstream capacity (SCALE-BP-13, RES), then reduce or redistribute that resource's load (SCALE-BP-6, SCALE-BP-7).
 
-`SCALE-AP-2` — **Premature sharding.**
-- Symptoms: custom shard router for a database of tens of GB; cross-shard joins re-implemented in application code; migrations run per shard by hand.
-- Why it hurts: permanent complexity, distributed transactions and operational toil for capacity a single primary would provide.
-- Way out: vertical scale, replicas, native table partitioning, functional split; when real limits are measured, move to a managed sharding layer (Vitess, Citus) or distributed SQL rather than a homegrown router.
+`SCALE-AP-2` — **Premature sharding.** Symptoms: custom shard router for a database of tens of GB; cross-shard joins re-implemented in application code; migrations run per shard by hand. Why it hurts: permanent complexity, distributed transactions and operational toil for capacity a single primary would provide. Way out: vertical scale, replicas, native table partitioning, functional split; when real limits are measured, move to a managed sharding layer (Vitess, Citus) or distributed SQL rather than a homegrown router.
 
-`SCALE-AP-3` — **"Stateless" service that is not.**
-- Symptoms: works with one replica, flaky with two; local caches without invalidation, in-memory job queues, WebSocket rooms tracked per process, files on local disk, per-pod schedulers.
-- Why it hurts: correctness depends on routing luck; scale-in and deploys lose work.
-- Way out: inventory process-local state, externalise anything correctness depends on, add a pub/sub backplane for connection fan-out, test with ≥2 replicas in CI or staging.
+`SCALE-AP-3` — **"Stateless" service that is not.** Symptoms: works with one replica, flaky with two; local caches without invalidation, in-memory job queues, WebSocket rooms tracked per process, files on local disk, per-pod schedulers. Why it hurts: correctness depends on routing luck; scale-in and deploys lose work. Way out: inventory process-local state, externalise anything correctness depends on, add a pub/sub backplane for connection fan-out, test with ≥2 replicas in CI or staging.
 
-`SCALE-AP-4` — **Hot partitions and noisy neighbours by design.**
-- Symptoms: one tenant/key/shard dominates load; p99 bad for everyone sharing it; throttling errors (DynamoDB `ProvisionedThroughputExceeded`, Kafka partition lag on one partition) while the cluster average is low.
-- Why it hurts: capacity is bounded by the hottest unit, not the average; one customer degrades all.
-- Way out: SCALE-BP-11, per-tenant quotas (SCALE-BP-20), directory-based placement for whales, cells (SCALE-BP-17).
+`SCALE-AP-4` — **Hot partitions and noisy neighbours by design.** Symptoms: one tenant/key/shard dominates load; p99 bad for everyone sharing it; throttling errors (DynamoDB `ProvisionedThroughputExceeded`, Kafka partition lag on one partition) while the cluster average is low. Why it hurts: capacity is bounded by the hottest unit, not the average; one customer degrades all. Way out: SCALE-BP-11, per-tenant quotas (SCALE-BP-20), directory-based placement for whales, cells (SCALE-BP-17).
 
-`SCALE-AP-5` — **The OLTP primary as the reporting and search engine.**
-- Symptoms: dashboards, exports, `LIKE '%term%'` search and multi-join aggregates on the primary; long-running queries blocking vacuum; "we added a replica for reports" that lags for hours.
-- Why it hurts: read shapes fight the write path for CPU, I/O and locks; capacity of the whole system is set by its worst report.
-- Way out: CQRS read models via CDC into a search/OLAP store (SCALE-BP-15).
+`SCALE-AP-5` — **The OLTP primary as the reporting and search engine.** Symptoms: dashboards, exports, `LIKE '%term%'` search and multi-join aggregates on the primary; long-running queries blocking vacuum; "we added a replica for reports" that lags for hours. Why it hurts: read shapes fight the write path for CPU, I/O and locks; capacity of the whole system is set by its worst report. Way out: CQRS read models via CDC into a search/OLAP store (SCALE-BP-15).
 
-`SCALE-AP-6` — **Active-active by default.**
-- Symptoms: "both regions accept writes" with async bidirectional replication; no stated conflict resolution; last-write-wins discovered in an incident; region-local ID sequences colliding.
-- Why it hurts: silent lost updates and divergence, very hard to repair after the fact.
-- Way out: home region per entity (geo-partitioning) or active-passive; reserve multi-writer for commutative data with explicit merge rules (IDEM).
+`SCALE-AP-6` — **Active-active by default.** Symptoms: "both regions accept writes" with async bidirectional replication; no stated conflict resolution; last-write-wins discovered in an incident; region-local ID sequences colliding. Why it hurts: silent lost updates and divergence, very hard to repair after the fact. Way out: home region per entity (geo-partitioning) or active-passive; reserve multi-writer for commutative data with explicit merge rules (IDEM).
 
-`SCALE-AP-7` — **Autoscaler as the capacity plan.**
-- Symptoms: no estimates, no load tests, very high `maxReplicas`; incidents during spikes because scaling lags; surprise bills.
-- Why it hurts: autoscaling reacts too slowly for spikes and scales into downstream ceilings.
-- Way out: SCALE-BP-1, SCALE-BP-2, SCALE-BP-5, SCALE-BP-19, plus load shedding (RES).
+`SCALE-AP-7` — **Autoscaler as the capacity plan.** Symptoms: no estimates, no load tests, very high `maxReplicas`; incidents during spikes because scaling lags; surprise bills. Why it hurts: autoscaling reacts too slowly for spikes and scales into downstream ceilings. Way out: SCALE-BP-1, SCALE-BP-2, SCALE-BP-5, SCALE-BP-19, plus load shedding (RES).
 
-`SCALE-AP-8` — **Big-bang resharding.**
-- Symptoms: plan requires a maintenance window, a full rehash and a one-way cutover; no verification or rollback step.
-- Why it hurts: long downtime, high risk of data loss, and the next reshard is just as painful.
-- Way out: logical partitions plus online, verified, reversible moves (SCALE-BP-9, SCALE-BP-10).
+`SCALE-AP-8` — **Big-bang resharding.** Symptoms: plan requires a maintenance window, a full rehash and a one-way cutover; no verification or rollback step. Why it hurts: long downtime, high risk of data loss, and the next reshard is just as painful. Way out: logical partitions plus online, verified, reversible moves (SCALE-BP-9, SCALE-BP-10).
 
 ## Go / Node.js notes
 

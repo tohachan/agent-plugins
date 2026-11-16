@@ -76,37 +76,19 @@
 
 ## Anti-patterns
 
-`MSG-AP-1` — **Request/reply over queues as synchronous RPC.**
-- Symptoms: HTTP handler publishes to a queue then blocks on a temporary reply queue; timeouts tuned in seconds; temporary queues per request.
-- Why it hurts: latency and failures of RPC plus broker overhead; timeouts leave orphan work that still executes; hard to trace.
-- Way out: direct RPC with RES policies for synchronous needs; otherwise make the API async (202 + status, API-BP-10) and let the reply update state (MSG-BP-19).
+`MSG-AP-1` — **Request/reply over queues as synchronous RPC.** Symptoms: HTTP handler publishes to a queue then blocks on a temporary reply queue; timeouts tuned in seconds; temporary queues per request. Why it hurts: latency and failures of RPC plus broker overhead; timeouts leave orphan work that still executes; hard to trace. Way out: direct RPC with RES policies for synchronous needs; otherwise make the API async (202 + status, API-BP-10) and let the reply update state (MSG-BP-19).
 
 `MSG-AP-2` — **See IDEM-AP-1 (canonical mechanism).** Inspect the DB/broker commit window and recovery; publishing adjacent to commit does not make the writes atomic.
 
-`MSG-AP-3` — **Event notification that forces callbacks (thin-event storm).**
-- Symptoms: events carry only an id; every consumer immediately calls the producer's API; producer load spikes with each event; consumers read stale data from producer replicas.
-- Why it hurts: temporal coupling returns; producer availability gates all consumers; fan-out multiplies read load.
-- Way out: event-carried state transfer with versioning (MSG-BP-13), or a published read model.
+`MSG-AP-3` — **Event notification that forces callbacks (thin-event storm).** Symptoms: events carry only an id; every consumer immediately calls the producer's API; producer load spikes with each event; consumers read stale data from producer replicas. Why it hurts: temporal coupling returns; producer availability gates all consumers; fan-out multiplies read load. Way out: event-carried state transfer with versioning (MSG-BP-13), or a published read model.
 
-`MSG-AP-4` — **Commands disguised as events (passive-aggressive events).**
-- Symptoms: `SendWelcomeEmailRequested`, `ChargeCardEvent` published to a topic that exactly one known service must handle; producer breaks if that consumer misbehaves.
-- Why it hurts: hidden coupling — the producer depends on an outcome it pretends not to know; no clear owner for failure.
-- Way out: explicit command to the owning service's queue/API with a reply/status, or a real fact event (`UserRegistered`) and let the email service decide.
+`MSG-AP-4` — **Commands disguised as events (passive-aggressive events).** Symptoms: `SendWelcomeEmailRequested`, `ChargeCardEvent` published to a topic that exactly one known service must handle; producer breaks if that consumer misbehaves. Why it hurts: hidden coupling — the producer depends on an outcome it pretends not to know; no clear owner for failure. Way out: explicit command to the owning service's queue/API with a reply/status, or a real fact event (`UserRegistered`) and let the email service decide.
 
-`MSG-AP-5` — **Distributed monolith via event chains.**
-- Symptoms: business process spread across 5–10 services reacting to each other's events with no owner; nobody can answer "where is order X?"; changes ripple across teams.
-- Why it hurts: invisible workflow, impossible error handling and compensation, cyclic dependencies.
-- Way out: orchestrate long processes explicitly (saga orchestrator or workflow engine, IDEM/ARCH); keep choreography for loosely related reactions.
+`MSG-AP-5` — **Distributed monolith via event chains.** Symptoms: business process spread across 5–10 services reacting to each other's events with no owner; nobody can answer "where is order X?"; changes ripple across teams. Why it hurts: invisible workflow, impossible error handling and compensation, cyclic dependencies. Way out: orchestrate long processes explicitly (saga orchestrator or workflow engine, IDEM/ARCH); keep choreography for loosely related reactions.
 
-`MSG-AP-6` — **Broker as database.**
-- Symptoms: Kafka topics with infinite retention used as the only system of record and queried by scanning; RabbitMQ queues holding messages for weeks as storage.
-- Why it hurts: no queries, no indexes, painful corrections (GDPR erasure, fixing bad data), queues degrade with depth.
-- Way out: persist state in a database; use compacted topics only as changelogs with a rebuildable materialised view.
+`MSG-AP-6` — **Broker as database.** Symptoms: Kafka topics with infinite retention used as the only system of record and queried by scanning; RabbitMQ queues holding messages for weeks as storage. Why it hurts: no queries, no indexes, painful corrections (GDPR erasure, fixing bad data), queues degrade with depth. Way out: persist state in a database; use compacted topics only as changelogs with a rebuildable materialised view.
 
-`MSG-AP-7` — **Blocking retries inside the consumer.**
-- Symptoms: handler sleeps and retries a downstream call for minutes; partitions stall; visibility timeouts expire and duplicates appear.
-- Why it hurts: head-of-line blocking, duplicate processing, rebalances from exceeded poll intervals.
-- Way out: short bounded in-handler retries (≤ a few seconds), then delayed retry queues/topics and DLQ (MSG-BP-4).
+`MSG-AP-7` — **Blocking retries inside the consumer.** Symptoms: handler sleeps and retries a downstream call for minutes; partitions stall; visibility timeouts expire and duplicates appear. Why it hurts: head-of-line blocking, duplicate processing, rebalances from exceeded poll intervals. Way out: short bounded in-handler retries (≤ a few seconds), then delayed retry queues/topics and DLQ (MSG-BP-4).
 
 ## Go / Node.js notes
 

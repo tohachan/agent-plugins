@@ -34,3 +34,4 @@ Bodies: `knowledge/conc/rules.md`, looked up by ID.
 - CONC-BAD-8 — Channel send or receive without a `ctx.Done()` case
 - CONC-AP-7 — Channels as a general-purpose lock
 - CONC-AP-9 — See DATA-BP-5 (canonical mechanism)
+- CONC-BP-3 — Use atomics only for single independent values

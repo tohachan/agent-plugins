@@ -34,3 +34,4 @@ Bodies: `knowledge/data/rules.md`, looked up by ID.
 
 - DATA-AP-5 — Naive table-as-queue
 - DATA-AP-7 — Lock-everything consistency
+- DATA-BP-9 — See CONC-BP-10 (canonical mechanism)

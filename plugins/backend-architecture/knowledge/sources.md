@@ -6,13 +6,13 @@ Load only the row relevant to a decision. Stable rule IDs describe mechanisms; p
 
 | Rules / fact | Applicable scope | Source |
 | --- | --- | --- |
-| IDEM-BAD-3, IDEM-BP-12/13: API v1 replays saved executed responses including 500; API v2 has different recovery/replay behavior | Stripe API version matters; inspect the integration version and provider retention | [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests) |
+| IDEM-BAD-3, IDEM-BP-12, IDEM-BP-13: API v1 replays saved executed responses including 500; API v2 has different recovery/replay behavior | Stripe API version matters; inspect the integration version and provider retention | [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests) |
 | IDEM-BP-4: conflict handling and visibility depend on isolation; an uncommitted claim is not generally readable by another transaction | PostgreSQL 18; verify deployed isolation/version | [Transaction isolation](https://www.postgresql.org/docs/18/transaction-iso.html) |
 | MSG-BP-1: kafka-go CommitMessages advances a partition to the highest supplied offset, including earlier records | kafka-go v0.4.51 reference; consult installed version | [kafka-go explicit commits](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.51#hdr-Explicit_Commits) |
 | IDEM-BAD-6: a record offset identifies its position within a partition; rebalance reassigns partition ownership, not record identity | Kafka 4.1 consumer reference | [Kafka consumer offsets](https://kafka.apache.org/41/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html) |
 | MSG-BP-13: SQS SendMessage supports up to 1 MiB; configured queue limit may be lower | AWS SQS service/API at verification date; integrations may impose lower limits | [SendMessage](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessage.html) |
 
-Parallel outbox reordering and snapshot-versus-delta handling are protocol reasoning, not vendor defaults: verify them with the concrete failure interleavings in IDEM-BP-8/15.
+Parallel outbox reordering and snapshot-versus-delta handling are protocol reasoning, not vendor defaults: verify them with the concrete failure interleavings in IDEM-BP-8, IDEM-BP-15.
 
 ## Lookup starting points — not yet version-verified
 
