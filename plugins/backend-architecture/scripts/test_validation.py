@@ -90,9 +90,11 @@ class ReportContractTests(unittest.TestCase):
     def test_unassigned_units_rejected(self):
         self.ci()['units'][0]['total'] = 5
         self.assertTrue(any('no unassigned units' in x for x in validate(self.report)))
-    def test_unit_without_owner_rejected(self):
+    def test_unit_owner_is_optional_but_not_blank(self):
+        del self.ci()['units'][0]['owner']
+        self.assertEqual(validate(self.report), [])
         self.ci()['units'][0]['owner'] = ''
-        self.assertTrue(any('owner pass' in x for x in validate(self.report)))
+        self.assertTrue(any('owner is optional' in x for x in validate(self.report)))
     def test_sampling_needs_rule(self):
         u = self.ci()['units'][0]; u.update(checked=1, sampled=2)
         self.ci()['gaps'] = ['entry points sampled']; self.ci()['index_recommendation'] = 'Enumerate routes over a code index'
@@ -111,9 +113,11 @@ class ReportContractTests(unittest.TestCase):
         self.ci()['gaps'] = ['orders/lookup not reviewed']; self.ci()['index_recommendation'] = 'Graph-indexed pass over the module'
         self.report['overall']['readiness'] = 'supported_in_scope'
         self.assertTrue(any('not covered' in x for x in validate(self.report)))
-    def test_module_requires_owner(self):
-        self.ci()['domain_modules'][0]['owner'] = ''
-        self.assertTrue(any('domain module id and owner' in x for x in validate(self.report)))
+    def test_module_owner_is_optional_but_not_blank(self):
+        del self.ci()['domain_modules'][0]['owner']
+        self.assertEqual(validate(self.report), [])
+        self.ci()['domain_modules'][0]['owner'] = ' '
+        self.assertTrue(any('owner is optional' in x for x in validate(self.report)))
     def test_empty_modules_need_reason(self):
         self.ci()['domain_modules'] = []
         self.assertTrue(any('domain_modules_reason' in x for x in validate(self.report)))

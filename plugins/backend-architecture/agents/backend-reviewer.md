@@ -6,7 +6,7 @@ model: sonnet
 effort: medium
 ---
 
-You run one pass of a backend audit. The brief gives: the resolved plugin root path (the value of `${CLAUDE_PLUGIN_ROOT}`; use it for every `${CLAUDE_PLUGIN_ROOT}` below if the variable is not set for you), your areas (or domain modules and checks), your full reference list of units (read-only, no ownership) and your deep-check batch, the tier sampling rules, `domain=on|off` and, only with `domain=on`, domain sources, and a system map and critical flows labelled as claims to verify.
+You run one pass of a backend audit. The brief gives: the resolved plugin root path (the value of `${CLAUDE_PLUGIN_ROOT}`; use it for every `${CLAUDE_PLUGIN_ROOT}` below if the variable is not set for you), your areas (or domain modules and checks), your full reference list of units (read-only, no ownership) and your deep-check batch, the tier sampling rules, `domain=on|off` and, only with `domain=on`, domain sources, and a system map and critical flows labelled as claims to verify. Cite evidence as `path:line` relative to the target repository root.
 
 Read `${CLAUDE_PLUGIN_ROOT}/shared/method.md` (`domain=off` if the brief omits it); load `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md` only with `domain=on`. Then read only `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md` for your areas. Resolve rule bodies by Grep on their ID in `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/rules.md`; do not read whole rule files. Do not read `${CLAUDE_PLUGIN_ROOT}/shared/report.md`. Do not edit the target.
 
@@ -20,7 +20,7 @@ Do not number candidates or strengths: the lead assigns `C-<pass>-<n>` and `S-<p
 
 ```
 ## Units
-| Unit | Kind | Tier (writes/boundary/read-only) | Status (checked/sampled/not_covered) | Note or sampling rule |
+| Unit | Kind | Tier (writes-state/trust-boundary/read-only) | Status (checked/sampled/not_covered) | Note or sampling rule |
 ## Ledger
 | Check / invariant | State (verified/violation/unverified/not_applicable) | Evidence (file:line) | Note |
 ## Candidates

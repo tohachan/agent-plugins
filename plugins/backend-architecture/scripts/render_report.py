@@ -93,10 +93,10 @@ def scorecard(r):
 
 def coverage(r):
     ci = r['coverage_inventory']
-    parts = [table(['Unit kind', 'Total', 'Checked', 'Sampled', 'Not covered', 'Owner / sampling rule'],
+    parts = [table(['Unit kind', 'Total', 'Checked', 'Sampled', 'Not covered', 'Sampling rule / note'],
                    [[u['kind'], u['total'], u['checked'], u['sampled'], u['not_covered'], '; '.join(x for x in (u.get('owner'), u.get('sampling')) if x)] for u in ci['units']])]
     mods = ci.get('domain_modules') or []
-    parts.append('**Domain modules:** ' + ('; '.join(f"{m['id']} ({m['status']}, {m['owner']})" for m in mods) if mods else cell(ci.get('domain_modules_reason'))))
+    parts.append('**Domain modules:** ' + ('; '.join(f"{m['id']} ({', '.join(x for x in (m['status'], m.get('owner')) if x)})" for m in mods) if mods else cell(ci.get('domain_modules_reason'))))
     inv = ci.get('invariants') or []
     if inv: parts.append(table(['Invariant', 'Statement', 'Source', 'Entry points', 'Status'], [[i['id'], i['statement'], i['source'], i['entry_points'], i['status']] for i in inv]))
     else: parts.append('**Invariants:** ' + cell(ci.get('invariants_reason')))

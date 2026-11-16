@@ -77,7 +77,7 @@ def coverage_inventory(report, require, strings):
             require(False, f'coverage unit {kind}: total/checked/sampled/not_covered must be non-negative integers'); continue
         total, checked, samp, nc = nums
         require(checked + samp + nc == total, f'coverage unit {kind}: checked + sampled + not_covered must equal total (no unassigned units)')
-        require(text(u.get('owner')), f'coverage unit {kind}: owner pass required')
+        require(u.get('owner') is None or text(u['owner']), f'coverage unit {kind}: owner is optional; when present it must be a nonempty string')
         require(u.get('risk_tier') is None or u['risk_tier'] in RISK_TIERS, f'coverage unit {kind}: risk_tier must be one of {", ".join(RISK_TIERS)}')
         if samp:
             require(text(u.get('sampling')), f'coverage unit {kind}: sampling rule and denominator required')
@@ -92,7 +92,8 @@ def coverage_inventory(report, require, strings):
     for m in modules:
         if not isinstance(m, dict):
             require(False, 'domain module must be an object'); continue
-        require(text(m.get('id')) and text(m.get('owner')), 'domain module id and owner required')
+        require(text(m.get('id')), 'domain module id required')
+        require(m.get('owner') is None or text(m['owner']), f'domain module {m.get("id")}: owner is optional; when present it must be a nonempty string')
         require(m.get('status') in UNIT_STATUSES, f'domain module {m.get("id")}: status must be checked/sampled/not_covered')
         uncovered |= m.get('status') == 'not_covered'
         sampled |= m.get('status') == 'sampled'
