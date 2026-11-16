@@ -1,7 +1,7 @@
 ---
 name: backend-audit
-description: Audit existing backend code, configuration or architecture for evidenced correctness, security, reliability and operability risks. Use for backend reviews, bottlenecks, concurrency, messaging and architecture assessment, including Russian requests such as "проверь архитектуру". Technical audit by default; business/domain logic is opt-in. Covers focused or full audits with the shared scorecard, coverage inventory and JSON report. For a quick check against one area's rules without a report, use backend-rules; for designing new behavior, use backend-design.
-argument-hint: "[areas | all] [path] [--domain on|off]"
+description: Audit existing backend code, configuration or an architecture document for evidenced correctness, security, reliability and operability risks. Default is a triage of the 3–5 highest-impact risks with evidence and an honest list of what was not examined, with no numeric scores; `--full` runs the complete protocol with coverage inventory, scorecard and readiness. Use for "посмотри мой сервис", backend reviews, bottlenecks, concurrency, messaging and architecture assessment, "проверь архитектуру". Technical by default; business/domain logic is opt-in. Not for a pattern or "how should I" question (backend-rules) and not for designing new behavior (backend-design).
+argument-hint: "[areas | all] [path] [--full] [--domain on|off]"
 model: opus
 effort: medium
 ---
@@ -10,27 +10,43 @@ effort: medium
 
 Plugin files live under `${CLAUDE_PLUGIN_ROOT}` (the plugin root, two levels above this skill directory); every `knowledge/`, `shared/` and `scripts/` path below is under it, never in the target repository. Read `${CLAUDE_PLUGIN_ROOT}/knowledge/README.md` and `${CLAUDE_PLUGIN_ROOT}/shared/method.md` once. Read `${CLAUDE_PLUGIN_ROOT}/shared/report.md` only when writing the report.
 
-## 1. Scope
+## 1. Scope and depth
 
-Map the request / `$ARGUMENTS` through the index aliases and symptom table. Resolve domain scope per `${CLAUDE_PLUGIN_ROOT}/shared/method.md`: default `off`; `--domain on` or an explicit request to check business/domain logic enables it, `--domain off` excludes it. `all`, "full audit" and "проверь всё" alone keep it off. Apply this to focused and full audits.
+Map the request / `$ARGUMENTS` through the index aliases and symptom table. Resolve domain scope per `${CLAUDE_PLUGIN_ROOT}/shared/method.md`: default `off`; `--domain on` or an explicit request to check business/domain logic enables it, `--domain off` excludes it. `all`, "full audit" and "проверь всё" alone keep it off.
 
-- **Focused audit** — explicit areas or one mechanism: only those areas. Continue below.
-- **Full audit** — an unfocused service/repository audit, `all`, or an inventory too large for one pass: all 13 technical areas, plus domain passes only when enabled. Follow `${CLAUDE_PLUGIN_ROOT}/shared/full-audit.md` (fixed passes, work file, subagents when available, coverage gate) instead of steps 2–3 here.
+**Depth is chosen before any inventory, from the request alone:**
 
-Record revision, environment, assumptions and unavailable evidence. Build the system map — entry points, modules/services, stores, brokers, external clients, deployment and trust boundaries — as claims to verify, not findings. Build the coverage inventory (method, "Coverage inventory") before checking anything: count units from the project's own artifacts, locate domain sources only when enabled, use a code index if present, look for prior audits of the same target. Ask only for missing information that changes a material conclusion.
+- **Triage (default)** — any request without `--full`: an unstructured "look at my service", `all`, or explicit areas. Areas named in the request bound the triage; `all` or no areas means all 13 are candidates, but only the ones the critical flows touch are read. Continue with step 2.
+- **Full** — `--full`, or an explicit request for a full, complete or exhaustive audit with coverage and scores ("полный аудит", "full audit with a scorecard"). Explicit areas make a focused full audit (follow steps 3–4 of this file, not `${CLAUDE_PLUGIN_ROOT}/shared/full-audit.md`); no areas or `all` makes the unfocused full audit: all 13 technical areas, plus domain passes only when enabled, following `${CLAUDE_PLUGIN_ROOT}/shared/full-audit.md` instead of steps 2–4 here.
 
-## 2. Trace and check (focused)
+Never switch depth by yourself. A large focused audit keeps its areas and its depth; it is not widened to all 13 areas and not promoted to a full audit.
 
-Trace the critical flows in scope end to end. Read the selected areas' `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md` and apply the method's domain scope filter before resolving references; resolve each in-scope cited rule by Grep on its ID, never by reading a whole `rules.md`. Look up a rule to confirm or refute a candidate, not only after deciding to report it. Apply the method's mechanism boundaries and, when domain review is enabled, the relevant checks in `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md`. Keep the ledger; test high-impact hypotheses when feasible and record inspected versus executed.
+**Quick count first.** Count what exists from the project's own artifacts, cheaply (route tables, registries, consumers and jobs, migrations, external clients; sections for a document): a listing or a grep, not a read of each unit. Record the counts; they size the triage, feed the inventory of a full audit and are not recomputed there. In triage, when the counts are large (roughly more than 30 entry points, or several services), or when the findings leave critical flows unexamined, say in the report that `--full` would pay off and why, without running it.
 
-## 3. Gate (focused)
+Record revision, environment, assumptions and unavailable evidence. The target may be code, configuration or an architecture document; for a document the units are its sections, claims and diagrams, and evidence is quoted text.
+
+## 2. Triage
+
+1. **System map** — entry points, modules/services, stores, brokers, external clients, deployment and trust boundaries, from the quick count and a skim: claims to verify, not findings.
+2. **Critical flows** — pick the 3–5 whose failure is costliest (money, auth, data loss, ordering) and trace each end to end with file:line.
+3. **Mechanism boundaries** — apply the mechanism boundaries of `${CLAUDE_PLUGIN_ROOT}/shared/method.md` to those flows; read the relevant areas' `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md` (apply the method's domain scope filter), and resolve cited rules by Grep on their ID, never by reading a whole `rules.md`. Check the opposite hypothesis before keeping a High/Critical candidate: the control's other plausible owners (callers, schema, middleware, gateway, provider contract).
+4. **Findings** — the top risks, each with realistic impact, file:line evidence, a minimal fix and a verification, severity per `${CLAUDE_PLUGIN_ROOT}/shared/report.md`. A healthy system yields few or no findings; say so instead of padding. No numeric scores, no per-check ledger, no work file, no verifiers.
+5. **Not examined** — an honest list of what was not looked at and why (areas, units, runtime behavior, domain scope), plus the `--full` note from the quick count when it applies.
+
+Report using the triage layout of `${CLAUDE_PLUGIN_ROOT}/shared/report.md` and render it as in step 5.
+
+## 3. Trace and check (full, focused)
+
+Build the coverage inventory (method, "Coverage inventory") from the quick count before checking: units from the project's own artifacts, domain sources only when enabled, a code index if present, prior audits of the same target. Document units (sections, claims) are valid units. Trace the critical flows in scope end to end. Read the selected areas' `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md` and apply the method's domain scope filter before resolving references; resolve each in-scope cited rule by Grep on its ID. Look up a rule to confirm or refute a candidate, not only after deciding to report it. Apply the method's mechanism boundaries and, when domain review is enabled, the relevant checks in `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md`. Keep the ledger; test high-impact hypotheses when feasible and record inspected versus executed.
+
+## 4. Gate (full, focused)
 
 Every in-scope unit has a terminal status. Before keeping a High/Critical candidate or a critical strength, re-read the code for the opposite hypothesis. Reconcile available prior High/Critical items for the same target and revision.
 
-## 4. Judge and report
+## 5. Judge, report, render
 
-Apply `${CLAUDE_PLUGIN_ROOT}/shared/report.md`: realistic impact, minimal fix and verification per item; conditional severity (`severity_if`, `trigger`) for pending events; strengths instead of invented findings in a healthy area; unsupported hypotheses and owner decisions as open questions. Use the compact form for narrow requests.
+Apply `${CLAUDE_PLUGIN_ROOT}/shared/report.md`: realistic impact, minimal fix and verification per item; conditional severity (`severity_if`, `trigger`) for pending events; strengths instead of invented findings in a healthy area; unsupported hypotheses and owner decisions as open questions. A full audit scores and assesses readiness; a triage does neither.
 
 - **Render and validate before delivering:** write the narrative sections, render markers and closing JSON, then run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py <report> --evidence-root <target>` (always the plugin's script by this absolute path, whatever the working directory; never a `scripts/` copy in the target). It validates and fills the tables and finding blocks; a failing report is not finished.
-- **Save** in a writable repository to `docs/audit/backend-audit-<YYYY-MM-DD>.md` unless the user chooses otherwise, without overwriting a different audit of the same day; otherwise return the full report in the reply.
-- **Chat summary:** domain review on/off, blockers, coverage gaps with the index recommendation, and the score. With domain off, say that business logic was excluded; the score covers technical scope only.
+- **Save** in a writable repository to `docs/audit/backend-audit-<YYYY-MM-DD>.md` unless the user chooses otherwise, without overwriting a different audit of the same day; otherwise return the report in the reply.
+- **Chat summary:** depth, domain review on/off, the top risks, what was not examined and, for triage, whether `--full` is worthwhile; for a full audit also blockers, coverage gaps with the index recommendation, and the score. With domain off, say that business logic was excluded.

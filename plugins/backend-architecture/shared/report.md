@@ -41,6 +41,8 @@ Never substitute zero for `null`. Report discovered violations even in an unveri
 
 With domain review off (the audit default), add "Domain business logic (domain=off)" to `provenance.exclusions`, state the exclusion in the summary, and set `coverage_inventory.domain_modules` to `[]` with `domain_modules_reason: "Domain business logic excluded (domain=off)"`. Do not enumerate excluded business obligations or label modules checked. Keep technical invariants in `invariants`; if none are established, use `[]` with an honest `invariants_reason`.
 
+A triage audit has no inventory: it names the exclusion in `provenance.exclusions` and in the summary.
+
 Exclusion is a deliberate scope boundary, not missing evidence: do not add excluded domain modules to `units`, `gaps` or `not_covered` counts, or lower readiness solely for the exclusion. Missing technical evidence still affects readiness normally. Scores and `supported_in_scope` cover technical scope only. With domain on, inventory and assess in-scope domain modules normally; name the enabled domain review in the summary. Design reports carry no domain section: domain requirements appear as assumptions and decisions when the requirements name roles, money or approvals.
 
 ## Severity

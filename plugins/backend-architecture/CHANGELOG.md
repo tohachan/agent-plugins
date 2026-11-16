@@ -8,6 +8,8 @@
 - `backend-design` reads `shared/domain-audit.md` only when the requirements name privileged roles, money, approvals or retention obligations; the SEC-BP-21, DATA-BP-21 and IDEM-BP-21 paragraph is gone from its decide step.
 - `backend-design` is pinned to `opus`/`medium` like `backend-audit`, so model pinning is symmetric across the two report-producing skills.
 - Audit reports carry `depth: "full"` (today's contract, unchanged apart from the version).
+- **`backend-audit` is a triage by default**: quick unit count, system map, 3–5 critical flows, findings with evidence and a list of what was not examined, with no numeric scores, ledger, work file or verifiers. `--full` (or an explicit request for a full audit) runs today's protocol with coverage inventory, scorecard and readiness. `all` no longer implies the full protocol, and a large focused audit keeps its areas and depth; the triage says when `--full` would pay off but never switches itself. Depth is chosen from the request, before the inventory, and the quick count is reused by the full protocol instead of being rebuilt.
+- Audit reports carry `depth: "triage" | "full"`. A triage report needs only findings and a nonempty `not_examined` list; `areas`, `overall` and `coverage_inventory` are optional (validated as before when present). Document units (sections, claims, diagrams) are explicitly valid in a full audit of an architecture document.
 - Routing: a pattern question over 1–3 areas ("how do I make webhooks idempotent?") goes to `backend-rules`, which offers `backend-design` when it grows into a whole system. The `backend-rules` and `backend-design` descriptions no longer overlap, and `backend-rules` says "1–3 areas" consistently.
 
 ## 0.5.0

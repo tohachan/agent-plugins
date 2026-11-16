@@ -14,13 +14,15 @@ Governs every area file, including checklist "Fail" labels and default severitie
 
 - Record target revision (commit + dirty state, or document version), environment, artifacts and exclusions; plugin version from `.claude-plugin/plugin.json`. Source code alone is not production verification.
 - Ask only questions whose answer changes a material conclusion (missing target, availability, loss tolerance, external controls). Continue independent work; mark assumptions.
-- Focused request: findings and scorecard stay in scope. Read adjacent rules only to establish a guarantee; name an essential out-of-scope dependency without auditing it. Still inventory the units inside the scope.
+- Focused request: findings (and the scorecard, in a full audit) stay in scope. Read adjacent rules only to establish a guarantee; name an essential out-of-scope dependency without auditing it. Still inventory the units inside the scope.
 - Start from the highest-impact flows. Trace each: entry/authentication → authorization → state reads → transaction/side effect → publication/ack → recovery; name invariant, owner, trust boundaries and authoritative state. Then use the checklists to find omissions.
 - A rule is a hypothesis about a failure: establish applicability, an actual violation and evidence that could refute it. Numbers for team sizes, hops, throughput, timeouts and topology are starting points, not acceptance limits. An alternative mechanism meeting the requirement passes.
 - Before calling a control missing, inspect its plausible owners: callers/wrappers, schema constraints, middleware/gateway, infrastructure, provider contract. An unavailable owner is an unknown; absence from a supplied snippet is not system-wide absence.
 - When a conclusion depends on a vendor limit, SDK behavior or version, consult `${CLAUDE_PLUGIN_ROOT}/knowledge/sources.md`. Unverified defaults are assumptions, not findings.
 
 ## Coverage inventory
+
+Built by a full audit; a triage audit only counts units (quick count) and lists what it did not examine. Units may be sections, claims and diagrams of an architecture document as well as code artifacts.
 
 Coverage holes hide the findings that matter most, because the reviewed paths are usually the well-built ones. Build the inventory before checking anything and keep it to the end.
 
