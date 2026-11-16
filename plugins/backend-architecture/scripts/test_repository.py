@@ -1,5 +1,5 @@
 import unittest
-from validate_repository import decision_errors, rules_layout_errors, checks_layout_errors, abbreviation_errors, orphan_errors
+from validate_repository import decision_errors, rules_layout_errors, checks_layout_errors, abbreviation_errors, orphan_errors, domain_check_errors
 
 HEAD = '| Decision | Options | Choose … when | Trade-off | Rules |\n| --- | --- | --- | --- | --- |\n'
 DEFS = {'ARCH-BP-1': 1, 'ARCH-AP-7': 1}
@@ -34,5 +34,15 @@ class IdHygieneTests(unittest.TestCase):
     def test_full_ids_ok(self): self.assertEqual(abbreviation_errors('s', 'PERF-BP-1, PERF-BP-3 and IDEM-BP-12, IDEM-BP-13; XX-BP-n'), [])
     def test_orphan_rejected(self): self.assertEqual(len(orphan_errors({'A-BP-1': 1, 'A-BP-2': 1, 'A-CHK-1': 1}, {'A-BP-1'})), 1)
     def test_no_orphans_ok(self): self.assertEqual(orphan_errors({'A-BP-1': 1, 'A-CHK-1': 1}, {'A-BP-1'}), [])
+
+class DomainChecksTests(unittest.TestCase):
+    ROW = '| SEC-CHK-21 | q | e | High |\n'
+    def test_row_registered(self):
+        defs = {}
+        self.assertEqual(domain_check_errors('d', self.ROW, {'sec'}, defs), [])
+        self.assertIn('SEC-CHK-21', defs)
+    def test_unknown_area_rejected(self): self.assertTrue(domain_check_errors('d', self.ROW, {'idem'}, {}))
+    def test_duplicate_of_area_check_rejected(self): self.assertTrue(domain_check_errors('d', self.ROW, {'sec'}, {'SEC-CHK-21': 1}))
+    def test_ticked_id_rejected(self): self.assertTrue(domain_check_errors('d', '| `SEC-CHK-21` | q | e | High |\n', {'sec'}, {}))
 
 if __name__ == '__main__': unittest.main()

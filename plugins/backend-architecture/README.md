@@ -62,6 +62,8 @@ Models: `backend-audit` (the lead that merges passes and judges) runs on `opus` 
 
 An explicit natural-language request to check business/domain logic also enables it. `all` or "full audit" alone does not. Domain off skips business-policy discovery and domain reviewer passes; technical authorization enforcement, tenant isolation, transactions, retries and concurrency remain in scope. Reports show the exclusion and assess readiness only within technical scope. Domain instructions in `shared/domain-audit.md` load only when enabled; backend-design considers domain requirements only when the requirements name roles, money or approvals, and backend-rules follows the requested rule.
 
+**Running the target's code.** Auditing someone else's repository and running its tests means executing its code. The agents `backend-reviewer` and `backend-verifier` have no Bash and only read; the lead agent runs tests or experiments one at a time, and only after you explicitly agree. Without agreement they are listed as proposed, not executed.
+
 ## Areas (13)
 
 API · DATA · CACHE · MSG · CONC · IDEM · RES · SCALE · PERF · SEC · OBS · ARCH · OPS. Each is `knowledge/<prefix>/` with `decisions.md` (key decisions, for design), `checks.md` (audit checklist, for audit) and `rules.md` (`XX-BP/BAD/AP-n` bodies, looked up by ID). Reports cite the IDs. Index and aliases: `knowledge/README.md`.

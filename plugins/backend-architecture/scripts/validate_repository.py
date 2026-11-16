@@ -52,6 +52,18 @@ def orphan_errors(definitions, cited):
     return [f'{i} is not cited by any check, "Also scan for" entry or decisions Rules cell' for i in sorted(definitions)
             if RULE_DEF.fullmatch(f'`{i}`') and i not in cited]
 
+def domain_check_errors(label, text, dirs, definitions):
+    """Domain-only checks live in shared/domain-audit.md: a stable ID of an existing area prefix, defined once, one table row each."""
+    errors = checks_layout_errors(label, text)
+    for n, line in enumerate(text.splitlines(), 1):
+        m = CHECK_DEF.match(line)
+        if not m: continue
+        ident = m[1]
+        if ident.split('-')[0].lower() not in dirs: errors.append(f'{label}:{n}: {ident} has no area directory')
+        if ident in definitions: errors.append(f'Duplicate rule {ident}')
+        definitions[ident] = (label, n)
+    return errors
+
 def frontmatter(path, name, errors):
     body = path.read_text()
     if not body.startswith('---\n') or f'name: {name}\n' not in body.split('\n---\n', 1)[0] or '\ndescription: ' not in body:
@@ -84,6 +96,10 @@ def main():
             if q.is_file(): errors.extend(check(str(q.relative_to(ROOT)), q.read_text()))
         q = ROOT / 'knowledge' / d / 'checks.md'
         if q.is_file(): cited.update(RULES_CELL_ID.findall(q.read_text()))
+    domain = ROOT / 'shared' / 'domain-audit.md'
+    if domain.is_file():
+        errors.extend(domain_check_errors('shared/domain-audit.md', domain.read_text(), dirs, definitions))
+        cited.update(RULES_CELL_ID.findall(domain.read_text()))
     errors.extend(orphan_errors(definitions, cited))
     for p in ROOT.rglob('*.md'):
         if p.name == '_TEMPLATE.md': continue
@@ -102,7 +118,8 @@ def main():
     for rel in ('shared/method.md', 'shared/domain-audit.md', 'shared/report.md', 'shared/full-audit.md', 'knowledge/README.md', 'knowledge/sources.md'):
         if not (ROOT / rel).is_file(): errors.append(f'Missing runtime reference {rel}')
     for agent in sorted((ROOT / 'agents').glob('*.md')):
-        frontmatter(agent, agent.stem, errors)
+        front = frontmatter(agent, agent.stem, errors).split('\n---\n', 1)[0]
+        if re.search(r'^tools:.*\bBash\b', front, re.M): errors.append(f'{agent.relative_to(ROOT)}: audit agents read only; running the target\'s code is the lead\'s, with the user\'s consent')
     for skill in sorted((ROOT / 'skills').iterdir()):
         if not (skill / 'SKILL.md').exists(): continue
         frontmatter(skill / 'SKILL.md', skill.name, errors)
