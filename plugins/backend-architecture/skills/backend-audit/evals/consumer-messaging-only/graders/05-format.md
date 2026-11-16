@@ -4,4 +4,4 @@ focus: trace
 weight: 1
 ---
 
-The output uses the shared format: header table, scorecard with 0-10 scores, items with Evidence/Impact/Fix fields, and a JSON summary block.
+Every finding carries file:line evidence, the impact and a concrete fix. The report states which areas were not examined. Scores, if present, are limited to the examined areas and are consistent with the findings; the exact layout, header table and JSON block are not graded.

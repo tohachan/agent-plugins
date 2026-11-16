@@ -4,4 +4,4 @@ focus: trace
 weight: 1
 ---
 
-Critical guarantees have concrete failure scenarios, verification methods and measurable acceptance conditions. Planned tests are not claimed as passed. Readiness reflects unknowns and residual High/Critical risks; all required report sections may be compact but header, scorecard and final JSON remain.
+Critical guarantees (no double effect, no lost event, no invalid transition) each have a concrete failure scenario, a way to verify it and a measurable acceptance condition. Planned checks are described as planned, never as passed. Open unknowns are named rather than assumed away.

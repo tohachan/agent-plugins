@@ -1,4 +1,4 @@
 schema_version: "1.1"
 name: idempotent-payment-webhooks
 expected_outcome: |
-  A focused, trimmed design in the shared format: decision(s) with options and trade-offs, a Go sketch, residual risks, scores and a JSON block; no full system design.
+  A focused design answer: the chosen approach with a rejected alternative and revisit conditions, a Go sketch, evidenced residual risks and verification criteria; no full system design.

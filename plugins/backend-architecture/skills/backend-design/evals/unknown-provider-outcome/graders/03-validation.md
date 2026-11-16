@@ -4,4 +4,4 @@ focus: trace
 weight: 1
 ---
 
-Tests crash before call, after provider acceptance and before recording result, with explicit acceptance conditions and planned status. Retains scores, decisions, risks and JSON.
+Tests crash before the call, after provider acceptance and before the result is recorded, each with an explicit acceptance condition, described as planned rather than executed. The decisions and residual risks remain traceable to those scenarios.

@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: pattern-question-routing
+expected_outcome: |
+  A pattern question is answered through backend-rules in a short rule-based answer limited to the one to three relevant areas, with rule IDs and the trade-off, and an offer to move to backend-design if the user wants a full system; no design report, no scorecard.

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: triage-routing
+expected_outcome: |
+  An unstructured "look at my service" request yields a triage audit: a system map, the few most critical flows, evidenced findings for the top risks and an honest list of what was not examined; no full protocol, no numeric scores.
+context:
+  scaffold_script: place-files.sh
