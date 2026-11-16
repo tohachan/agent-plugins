@@ -8,7 +8,7 @@ effort: medium
 
 # Backend audit
 
-Plugin files live under `${CLAUDE_PLUGIN_ROOT}` (the plugin root, two levels above this skill directory); every `knowledge/`, `shared/` and `scripts/` path below is under it, never in the target repository. Read `${CLAUDE_PLUGIN_ROOT}/knowledge/README.md` and `${CLAUDE_PLUGIN_ROOT}/shared/method.md` once. Read `${CLAUDE_PLUGIN_ROOT}/shared/report.md` only when writing the report.
+Plugin files live under `${CLAUDE_PLUGIN_ROOT}`, the plugin root: the directory two levels above this `SKILL.md` (`../..` from its directory); where the variable is not expanded, as in Codex, use that directory instead; every `knowledge/`, `shared/` and `scripts/` path below is under it, never in the target repository. Read `${CLAUDE_PLUGIN_ROOT}/knowledge/README.md` and `${CLAUDE_PLUGIN_ROOT}/shared/method.md` once. Read `${CLAUDE_PLUGIN_ROOT}/shared/report.md` only when writing the report.
 
 ## 1. Scope and depth
 

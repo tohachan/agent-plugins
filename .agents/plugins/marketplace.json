@@ -1,0 +1,22 @@
+{
+  "name": "agent-plugins",
+  "interface": {
+    "displayName": "Agent Plugins"
+  },
+  "description": "Agent plugins and skills: each one lives in plugins/<name> and is installed and versioned on its own.",
+  "plugins": [
+    {
+      "name": "backend-architecture",
+      "source": {
+        "source": "local",
+        "path": "./plugins/backend-architecture"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Developer Tools",
+      "description": "Audit defaults to a triage of top risks, a full audit adds coverage inventory and scores, design records assumptions and validation; domain review opt-in.",
+      "version": "0.6.0"
+    }
+  ]
+}

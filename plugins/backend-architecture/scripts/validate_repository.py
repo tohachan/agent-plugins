@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Check stable rule definitions, knowledge layout, cross-references, skills/agents, eval layout and report example."""
+"""Check stable rule definitions, knowledge layout, cross-references, skills/agents, eval layout, report example and plugin manifests."""
 from pathlib import Path
+import json
 import re
 import sys
 from validate_report import load_report, validate, AREAS
@@ -62,6 +63,36 @@ def domain_check_errors(label, text, dirs, definitions):
         if ident.split('-')[0].lower() not in dirs: errors.append(f'{label}:{n}: {ident} has no area directory')
         if ident in definitions: errors.append(f'Duplicate rule {ident}')
         definitions[ident] = (label, n)
+    return errors
+
+def manifest_errors(plugin_root, marketplace_root=None):
+    """The Claude and Codex manifests agree on name and version, and so does each marketplace's entry.
+
+    Both runtimes cache an installed plugin by version, so a version that differs between them
+    installs a stale copy in one runtime. A marketplace root is checked only when it exists (the
+    plugin may be used outside this repository)."""
+    errors = []
+    def load(path):
+        try: return json.loads(path.read_text())
+        except (OSError, ValueError) as exc: errors.append(f'{path}: {exc}'); return None
+    manifests = {rel: load(plugin_root / rel) for rel in ('.claude-plugin/plugin.json', '.codex-plugin/plugin.json')}
+    found = {rel: (d.get('name'), d.get('version')) for rel, d in manifests.items() if d}
+    codex = manifests['.codex-plugin/plugin.json']
+    if codex and not (plugin_root / codex.get('skills', '')).is_dir(): errors.append(f'.codex-plugin/plugin.json: skills path {codex.get("skills")!r} is not a directory')
+    name = found.get('.claude-plugin/plugin.json', (plugin_root.name, None))[0]
+    if marketplace_root is not None:
+        for rel, source_path in (('.claude-plugin/marketplace.json', lambda e: e.get('source')),
+                                 ('.agents/plugins/marketplace.json', lambda e: (e.get('source') or {}).get('path'))):
+            path = marketplace_root / rel
+            if not path.is_file(): errors.append(f'missing marketplace manifest {rel}'); continue
+            data = load(path)
+            entries = [e for e in (data or {}).get('plugins', []) if e.get('name') == name]
+            if len(entries) != 1: errors.append(f'{rel}: expected one entry for {name}, found {len(entries)}'); continue
+            found[rel] = (entries[0].get('name'), entries[0].get('version'))
+            src = source_path(entries[0])
+            if not src or (marketplace_root / src).resolve() != plugin_root.resolve(): errors.append(f'{rel}: source {src!r} does not point at {plugin_root.name}')
+    if len(set(found.values())) > 1:
+        errors.append('manifests disagree on name/version: ' + ', '.join(f'{k}={v[0]}@{v[1]}' for k, v in sorted(found.items())))
     return errors
 
 def frontmatter(path, name, errors):
@@ -128,12 +159,14 @@ def main():
             if not (case / 'case.yaml').exists(): continue
             if not (case / 'prompt.md').exists() or not list((case / 'graders').glob('*.md')): errors.append(f'{case}: incomplete eval')
             if 'scaffold_script: place-files.sh' in (case / 'case.yaml').read_text() and not (case / 'place-files.sh').exists(): errors.append(f'{case}: missing scaffold')
+    market = ROOT.parents[1]
+    errors.extend(manifest_errors(ROOT, market if (market / '.claude-plugin/marketplace.json').is_file() else None))
     try: errors.extend(validate(load_report(ROOT / 'shared/report.md')))
     except (ValueError, OSError, TypeError) as exc: errors.append(str(exc))
     if errors:
         for e in errors: print('ERROR:', e)
         return 1
-    print(f'Repository valid: {len(definitions)} stable rule IDs in {len(dirs)} areas; references, skills, agents, eval layout and report example checked.')
+    print(f'Repository valid: {len(definitions)} stable rule IDs in {len(dirs)} areas; references, skills, agents, eval layout, report example and manifests checked.')
     return 0
 
 if __name__ == '__main__': sys.exit(main())

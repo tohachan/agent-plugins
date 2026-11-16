@@ -6,7 +6,7 @@ argument-hint: "<area | rule ID> [question or path]"
 
 # Backend rules lookup
 
-Plugin files live under `${CLAUDE_PLUGIN_ROOT}` (the plugin root, two levels above this skill directory); every `knowledge/` path below is under it, never in the target repository. Do not load `${CLAUDE_PLUGIN_ROOT}/shared/report.md` or `${CLAUDE_PLUGIN_ROOT}/shared/full-audit.md`; this skill produces no scorecard, coverage inventory, JSON or saved report.
+Plugin files live under `${CLAUDE_PLUGIN_ROOT}`, the plugin root: the directory two levels above this `SKILL.md` (`../..` from its directory); where the variable is not expanded, as in Codex, use that directory instead; every `knowledge/` path below is under it, never in the target repository. Do not load `${CLAUDE_PLUGIN_ROOT}/shared/report.md` or `${CLAUDE_PLUGIN_ROOT}/shared/full-audit.md`; this skill produces no scorecard, coverage inventory, JSON or saved report.
 
 1. **Locate.**
    - Given a rule ID, take its directory from the prefix (`IDEM-BP-13` → `${CLAUDE_PLUGIN_ROOT}/knowledge/idem/`) and Grep the ID: `` ^`IDEM-BP-13` `` for a rule, `` ^\| IDEM-CHK-3 \| `` for a check. Every rule body is one line, so no context flag is needed. Then skip to step 3.

@@ -4,18 +4,20 @@ Audit existing backend code and design new backend services against a rule base 
 
 ## Install
 
+From the repository root, `scripts/install.sh` installs the plugin globally for Claude Code and Codex (see the [repository README](../../README.md#install) for flags). By hand:
+
 ```text
 /plugin marketplace add tohachan/agent-plugins
 /plugin install backend-architecture@agent-plugins
 ```
 
-For a local checkout use `/plugin marketplace add <path-to-repo>`, or load the plugin directly with `claude --plugin-dir ./plugins/backend-architecture`. Skills are then available as `/backend-rules`, `/backend-audit` and `/backend-design` (or namespaced `/backend-architecture:backend-audit` if a name clashes).
+and for Codex `codex plugin marketplace add tohachan/agent-plugins` then `codex plugin add backend-architecture@agent-plugins`. For a local checkout use `/plugin marketplace add <path-to-repo>`, or load the plugin directly with `claude --plugin-dir ./plugins/backend-architecture`. Skills are then available as `/backend-rules`, `/backend-audit` and `/backend-design` (or namespaced `/backend-architecture:backend-audit` if a name clashes); in Codex they are picked by their descriptions or named in the prompt.
 
 ## Requirements
 
-- Claude Code with plugin and marketplace support.
+- Claude Code or Codex with plugin and marketplace support. Under Codex the skills resolve the plugin root from their own location, since `${CLAUDE_PLUGIN_ROOT}` is not expanded there.
 - Python 3 (standard library only, no minimum version tested) to validate and render reports with `${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py`. Without it the audit still runs, but report validation is skipped and the tables must be written by hand.
-- The Agent tool is optional. With it, full audits run parallel `backend-reviewer` and `backend-verifier` agents; without it the same passes run sequentially in one session.
+- The Agent tool is optional. With it, full audits run parallel `backend-reviewer` and `backend-verifier` agents; without it, as under Codex, which does not load the plugin's `agents/`, the same passes run sequentially in one session.
 - No network access, third-party packages or subprocesses are needed by the scripts.
 
 ## Limits and not for
