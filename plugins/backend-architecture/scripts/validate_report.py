@@ -149,10 +149,13 @@ def text_ok(v): return isinstance(v, str) and bool(v.strip())
 def check_prior(report, require, strings, evidence, prior):
     """The optional `prior` input: pins the prior report in provenance.prior and checks the verdicts, requirements and checks built on it.
     `prior` is the loaded prior report when the caller has it (render/validate --prior); it adds completeness checks."""
-    pin = (report.get('provenance') or {}).get('prior')
+    prov = report.get('provenance')
+    pin = prov.get('prior') if isinstance(prov, dict) else None
+    decs = [d for d in report.get('decisions') or [] if isinstance(d, dict)] if isinstance(report.get('decisions'), list) else []
+    if prior is not None and not isinstance(prior, dict): require(False, 'the prior report must be a JSON object'); prior = None
     mode = report.get('mode')
     fields = [k for k in ('prior_verdicts', 'prior_checks', 'requirements') if k in report]
-    if mode == 'design' and any('closes' in d for d in report.get('decisions', []) if isinstance(d, dict)): fields.append('closes')
+    if mode == 'design' and any('closes' in d for d in decs): fields.append('closes')
     if pin is None:
         require(not fields, f'{", ".join(fields)} need provenance.prior (source, mode, revision, date)')
         return
@@ -162,7 +165,8 @@ def check_prior(report, require, strings, evidence, prior):
     try: date.fromisoformat(pin.get('date', ''))
     except (TypeError, ValueError): require(False, 'provenance.prior.date must be ISO YYYY-MM-DD')
     pmode = pin.get('mode')
-    require(pmode in PRIOR_MODES, 'provenance.prior.mode must be audit or design')
+    if pmode not in PRIOR_MODES:
+        require(False, 'provenance.prior.mode must be audit or design'); return
     require(not (mode == 'design' and pmode == 'design'), 'a design takes an audit as prior, not another design')
     expected = {'audit': {'prior_verdicts'}, 'design': {'prior_checks'}}.get(pmode, set()) if mode == 'audit' else {'requirements'} if pmode == 'audit' else set()
     for k in set(fields) - expected - {'closes'}: require(False, f'{k} does not fit a {mode} report with a {pmode} prior')
@@ -189,7 +193,7 @@ def check_prior(report, require, strings, evidence, prior):
             if verdict in ('fixed', 'not_applicable'): require(str(x.get('fingerprint')) not in items, f'{label}: {verdict} but a current item carries its fingerprint')
         require(len(set(seen)) == len(seen), 'prior_verdicts: duplicate fingerprints')
         if isinstance(prior, dict):
-            want = {str(i.get('fingerprint')): str(i.get('id')) for i in prior.get('items', []) if isinstance(i, dict)}
+            want = {str(i.get('fingerprint')): str(i.get('id')) for i in (prior.get('items') if isinstance(prior.get('items'), list) else []) if isinstance(i, dict)}
             require(set(seen) == set(want), f'prior_verdicts must cover exactly the prior items: missing {sorted(set(want) - set(seen))}, unknown {sorted(set(seen) - set(want))}')
             for x in verdicts: require(not isinstance(x, dict) or want.get(str(x.get('fingerprint')), x.get('item')) == x.get('item'), f'prior_verdicts {x.get("item")}: item id differs from the prior report')
     if mode == 'audit' and pmode == 'design':
@@ -206,11 +210,11 @@ def check_prior(report, require, strings, evidence, prior):
             else: require(strings(x.get('evidence', [])) and text_ok(x.get('note')), f'{label}: {x.get("status")} needs a note and a string-array evidence')
         require(len(set(refs)) == len(refs), 'prior_checks: duplicate refs')
         if isinstance(prior, dict):
-            want = {str(x.get('id')) for k in ('decisions', 'validation') for x in prior.get(k, []) if isinstance(x, dict)}
+            want = {str(x.get('id')) for k in ('decisions', 'validation') for x in (prior.get(k) if isinstance(prior.get(k), list) else []) if isinstance(x, dict)}
             require(set(refs) == want, f'prior_checks must cover exactly the prior design D-n and V-n: missing {sorted(want - set(refs))}, unknown {sorted(set(refs) - want)}')
     if mode == 'design' and pmode == 'audit':
         reqs = report.get('requirements')
-        require(isinstance(reqs, list) and bool(reqs) and all(isinstance(x, dict) for x in reqs), 'requirements must be a nonempty array of objects (one per prior finding)')
+        require(isinstance(reqs, list) and all(isinstance(x, dict) for x in reqs), 'requirements must be an array of objects (one per non-Info prior finding)')
         reqs = reqs if isinstance(reqs, list) else []
         froms = [str(x.get('from')) for x in reqs if isinstance(x, dict)]
         for x in reqs:
@@ -219,18 +223,18 @@ def check_prior(report, require, strings, evidence, prior):
             require(bool(re.fullmatch(r'F-\d+', str(x.get('from')))), f'{label}: from must be an F-n of the prior audit')
             for key in ('fingerprint', 'requirement'): require(text_ok(x.get(key)), f'{label}: {key} required')
         require(len(set(froms)) == len(froms), 'requirements: duplicate from')
-        for d in report.get('decisions', []):
-            if not isinstance(d, dict) or 'closes' not in d: continue
+        for d in decs:
+            if 'closes' not in d: continue
             label = f'{d.get("id")}'
             require(strings(d['closes']) and bool(d['closes']) and set(d['closes']) <= set(froms), f'{label}: closes must name F-n listed in requirements')
             for key in ('migration', 'rollback'): require(text_ok(d.get(key)), f'{label}: {key} step required when a decision closes prior findings')
         if isinstance(prior, dict):
-            want = {str(i.get('fingerprint')): str(i.get('id')) for i in prior.get('items', []) if isinstance(i, dict) and i.get('severity') != 'info'}
+            want = {str(i.get('fingerprint')): str(i.get('id')) for i in (prior.get('items') if isinstance(prior.get('items'), list) else []) if isinstance(i, dict) and i.get('severity') != 'info'}
             got = {str(x.get('fingerprint')): str(x.get('from')) for x in reqs if isinstance(x, dict)}
             require(got == want, f'requirements must cover exactly the non-Info prior items: missing {sorted(set(want) - set(got))}, unknown {sorted(set(got) - set(want))}')
     if isinstance(prior, dict):
         require(prior.get('mode') == pmode, f'prior report is a {prior.get("mode")}, provenance.prior.mode says {pmode}')
-        require(str((prior.get('provenance') or {}).get('revision', 'unknown')) == str(pin.get('revision')), 'provenance.prior.revision differs from the prior report\'s provenance.revision')
+        require(str((prior.get('provenance') if isinstance(prior.get('provenance'), dict) else {}).get('revision', 'unknown')) == str(pin.get('revision')), 'provenance.prior.revision differs from the prior report\'s provenance.revision')
         require(prior.get('date') == pin.get('date'), 'provenance.prior.date differs from the prior report\'s date')
 
 def validate_design(report, require, strings, rules, evidence=None, prior=None):

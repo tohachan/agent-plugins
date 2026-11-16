@@ -443,3 +443,19 @@ class PriorEvalFixtureTests(unittest.TestCase):
         import render_report
         self.assertIn('fixed at 9f8e7d6', render_report.prior(report))
         self.assertIn('**New in this audit:** none', render_report.prior(report))
+
+class PriorMalformedInputTests(unittest.TestCase):
+    def test_malformed_prior_inputs_return_errors_not_exceptions(self):
+        design = [x for x in load_examples(ROOT/'shared/report.md') if x.get('mode') == 'design'][0]
+        for mode in ([], {}, 'x'):
+            r = copy.deepcopy(design); r['provenance']['prior'] = prior_pin(mode=mode)
+            self.assertTrue(validate(r))
+        r = copy.deepcopy(design); r['provenance'] = 'x'; r['decisions'] = None
+        self.assertTrue(validate(r))
+        r = copy.deepcopy(design); r['provenance']['prior'] = prior_pin(); r['requirements'] = []
+        for bad in ([], 'x', {'items': 5}, {'items': None, 'provenance': 's'}):
+            self.assertTrue(validate(r, prior=bad) is not None)
+    def test_design_on_a_clean_prior_may_have_no_requirements(self):
+        r = copy.deepcopy([x for x in load_examples(ROOT/'shared/report.md') if x.get('mode') == 'design'][0])
+        r['provenance']['prior'] = prior_pin(); r['requirements'] = []
+        self.assertEqual(validate(r, prior={'mode': 'audit', 'date': '2026-11-01', 'provenance': {'revision': 'a1b2c3d'}, 'items': []}), [])

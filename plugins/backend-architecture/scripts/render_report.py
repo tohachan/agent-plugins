@@ -136,7 +136,8 @@ def decisions(r):
     out = []
     for d in r['decisions']:
         fields = [('Options', d.get('options')), ('Chosen', d['choice']), ('Why', d.get('why')), ('Trade-off', d.get('tradeoff')),
-                  ('Revisit when', d.get('revisit')), ('Rules', d['rules']), ('Assumptions', d.get('assumptions')), ('Validation', d.get('validation'))]
+                  ('Revisit when', d.get('revisit')), ('Rules', d['rules']), ('Assumptions', d.get('assumptions')), ('Validation', d.get('validation')),
+                  ('Closes', d.get('closes')), ('Migration', d.get('migration')), ('Rollback', d.get('rollback'))]
         out.append(f"**{d['id']} · {d['title']}** — " + ' · '.join(f'{k}: {cell(v)}' for k, v in fields if v))
     return '\n\n'.join(out)
 
