@@ -7,6 +7,7 @@ The report author writes narrative sections plus the closing JSON and leaves mar
 when validation fails.
 """
 import argparse
+import json
 from pathlib import Path
 import re
 import sys
@@ -18,6 +19,12 @@ NAMES = {'API': 'API design', 'DATA': 'Data storage & transactions', 'CACHE': 'C
          'OPS': 'Delivery & operations'}
 SECTIONS = ('header', 'scorecard', 'coverage', 'items', 'decisions', 'validation')
 REQUIRED = {'audit': ('header', 'scorecard', 'coverage', 'items'), 'design': ('header', 'scorecard', 'coverage', 'items', 'decisions', 'validation')}
+SCRIPT = Path(__file__).resolve()
+
+def plugin_version():
+    try: return json.loads((SCRIPT.parents[1] / '.claude-plugin' / 'plugin.json').read_text())['version']
+    except (OSError, ValueError, KeyError): return 'unknown'
+
 MARKER = re.compile(r'<!-- render:(\w+) -->(?:.*?<!-- /render:\1 -->)?', re.S)
 
 def cell(v):
@@ -43,7 +50,7 @@ def header(r):
                  [[r['mode'], r['target'], ', '.join(a['id'] for a in r['areas']), r['date'], overall, o.get('readiness'), o.get('confidence') or 'unknown']])
     exclusions = r.get('provenance', {}).get('exclusions', [])
     if exclusions: result += '\n\n**Exclusions:** ' + cell(exclusions)
-    return result
+    return result + f'\n\n**Schema validation:** passed; rendered by `{SCRIPT}` (plugin {plugin_version()}).'
 
 def scorecard(r):
     rows, totals = [], dict(critical=0, high=0, medium=0, low=0)
@@ -144,6 +151,7 @@ def main():
         print('Nothing written.')
         return 1
     args.report.write_text(text)
+    print(f'render_report.py {SCRIPT} (plugin {plugin_version()})')
     print(f'Rendered and valid: {args.report} (claims still require substantive review).')
     return 0
 

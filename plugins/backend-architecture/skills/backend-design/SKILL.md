@@ -6,19 +6,19 @@ argument-hint: "[system or feature, constraints]"
 
 # Backend design
 
-Paths are relative to the plugin root, two levels above this skill directory. Read `knowledge/README.md` and `shared/method.md` once; `shared/report.md` when writing the report.
+Plugin files live under `${CLAUDE_PLUGIN_ROOT}` (the plugin root, two levels above this skill directory); every `knowledge/`, `shared/` and `scripts/` path below is under it, never in the target repository. Read `${CLAUDE_PLUGIN_ROOT}/knowledge/README.md` and `${CLAUDE_PLUGIN_ROOT}/shared/method.md` once; `${CLAUDE_PLUGIN_ROOT}/shared/report.md` when writing the report.
 
 ## 1. Frame
 
 Extract, marking assumptions and continuing independent work: actors, core flows and invariants; latency/availability, consistency and data-loss tolerance; average/peak traffic, volume and growth; trust boundaries and sensitive data; existing stack, team, budget, deadline. Ask a small batch of decision-changing questions, usually at most three.
 
-Read `shared/domain-audit.md`; design still includes domain requirements (the audit's default exclusion does not apply). Derive domain invariants from the requirements and the project's own specs, ADRs and policies. For each privileged role state what it may do to records tied to the actor (target = actor); which irreversible decisions need a second person; which workflow states must always have an actor able to move them on; which retention, deletion or delivery obligations apply. Record them in `coverage_inventory.invariants` with their source.
+Read `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md`; design still includes domain requirements (the audit's default exclusion does not apply). Derive domain invariants from the requirements and the project's own specs, ADRs and policies. For each privileged role state what it may do to records tied to the actor (target = actor); which irreversible decisions need a second person; which workflow states must always have an actor able to move them on; which retention, deletion or delivery obligations apply. Record them in `coverage_inventory.invariants` with their source.
 
 Show the arithmetic that affects choices (RPS, fan-out, storage, connections, recovery capacity), with ranges for uncertain inputs and the point where the choice changes. Estimated capacity is not measured capacity.
 
 ## 2. Decide
 
-Consider every indexed area; read `knowledge/<prefix>/decisions.md` for the relevant ones. Typically start with ARCH/DATA/API; add IDEM/MSG/CONC for writes and async work, RES for dependencies, SEC for trust crossings, OBS/OPS for production, CACHE/PERF/SCALE when requirements warrant. Look up rule bodies by Grep on their ID only where a choice or failure scenario depends on them; apply the method's mechanism boundaries.
+Consider every indexed area; read `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/decisions.md` for the relevant ones. Typically start with ARCH/DATA/API; add IDEM/MSG/CONC for writes and async work, RES for dependencies, SEC for trust crossings, OBS/OPS for production, CACHE/PERF/SCALE when requirements warrant. Look up rule bodies by Grep on their ID only where a choice or failure scenario depends on them; apply the method's mechanism boundaries.
 
 Domain authorization is declared once at the policy chokepoint and covered by a role × action × target matrix test (SEC-BP-21); obligations hold on every ingestion path (DATA-BP-21); workflows are explicit state machines with liveness (IDEM-BP-21).
 
@@ -32,6 +32,6 @@ Build the method's traceability table for critical promises, with states/transit
 
 ## 4. Report
 
-`shared/report.md` (schema 2.1) with Mermaid architecture/flow diagrams for a system design, D-n decisions, R-n risks, a coverage inventory whose invariants come from the requirements, strengths, build/rollout plan and validation. A focused pattern question uses the compact form: relevant areas only and one concise validation scenario.
+`${CLAUDE_PLUGIN_ROOT}/shared/report.md` (schema 2.1) with Mermaid architecture/flow diagrams for a system design, D-n decisions, R-n risks, a coverage inventory whose invariants come from the requirements, strengths, build/rollout plan and validation. A focused pattern question uses the compact form: relevant areas only and one concise validation scenario.
 
-Write the narrative sections, render markers and closing JSON, then run `python3 scripts/render_report.py <report>`; it validates and fills tables, risks, decisions and validation. A failing report is not finished. In a repository save to `docs/design/<slug>.md` unless told otherwise, preserving unrelated content; otherwise deliver in the reply. The design score describes the proposal under its assumptions, not production readiness.
+Write the narrative sections, render markers and closing JSON, then run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/render_report.py <report>` (always the plugin's script by this absolute path, whatever the working directory); it validates and fills tables, risks, decisions and validation. A failing report is not finished. In a repository save to `docs/design/<slug>.md` unless told otherwise, preserving unrelated content; otherwise deliver in the reply. The design score describes the proposal under its assumptions, not production readiness.
