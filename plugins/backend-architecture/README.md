@@ -1,6 +1,6 @@
 # backend-architecture
 
-Audit existing backend code and design new backend services against a rule base of best practices, bad practices and anti-patterns in 13 technical areas. Audits verify critical flows, keep a mandatory coverage inventory and produce a scored report in one shared format. The rule base is mostly legacy text: only a handful of facts are version-verified (see `knowledge/sources.md`), so findings are evidence-backed claims about your code, not certified statements about every rule.
+Audit existing backend code and design new backend services against a rule base of best practices, bad practices and anti-patterns in 13 technical areas. Audits verify critical flows, keep a mandatory coverage inventory and produce a scored report in one shared format. Most rule text is not yet version-verified: `knowledge/sources.md` lists only five verified facts plus lookup starting points, so findings are evidence-backed claims about your code, not certified statements about every rule.
 
 ## Install
 
@@ -14,7 +14,7 @@ For a local checkout use `/plugin marketplace add <path-to-repo>`, or load the p
 ## Requirements
 
 - Claude Code with plugin and marketplace support.
-- Python 3 (standard library only) to validate and render reports with `scripts/render_report.py`. Without it the audit still runs, but the report tables are not rendered from the JSON.
+- Python 3 (standard library only, no minimum version tested) to validate and render reports with `scripts/render_report.py`. Without it the audit still runs, but report validation is skipped and the tables must be written by hand.
 - The Agent tool is optional. With it, full audits run parallel `backend-reviewer` and `backend-verifier` agents; without it the same passes run sequentially in one session.
 - No network access, third-party packages or subprocesses are needed by the scripts.
 
@@ -26,7 +26,7 @@ For a local checkout use `/plugin marketplace add <path-to-repo>`, or load the p
 - The audit **reports and recommends; it does not edit or fix your code.**
 - Product defaults, limits and SDK behavior must be checked against your actual versions (`knowledge/sources.md`).
 - Structural validation of the plugin does not establish model quality; no speedup or accuracy improvement is claimed.
-- Not a substitute for a security audit, penetration test or load test.
+- Not a penetration test, exploit validation or load test; security findings are code-level review claims.
 
 ## Skills and agents
 
