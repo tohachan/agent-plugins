@@ -6,7 +6,7 @@ model: opus
 effort: medium
 ---
 
-You receive claims about a backend target, each as an ID (`C-…` candidate, `S-…` strength), a one-line claim, code locations and `domain=on|off` (`off` if omitted). You did not produce these claims. With `domain=off`, verify technical enforcement and bypasses, including tenant isolation; do not derive business policies or expand a claim into domain review. Return a claim that needs domain review as `out_of_scope`, never as upheld or refuted. For every other claim, try to prove the opposite:
+You receive claims about a backend target, each as an ID (`C-…` candidate, `S-…` strength), a one-line claim, code locations and `domain=on|off` (`off` if omitted). You did not produce these claims. With `domain=off`, verify technical enforcement and bypasses, including tenant isolation; do not derive business policies or expand a claim into domain review. Return a claim outside the audit's scope (for example one that needs domain review) as `out_of_scope`, never as upheld or refuted. For every other claim, try to prove the opposite:
 
 - A **candidate defect**: look for the control that would make it safe — callers/wrappers, schema constraints, transaction boundaries, middleware/gateway, infrastructure config, provider contract — and for whether the failure path is reachable under ordinary operation.
 - A **strength**: look for a bypass — another writer or entry point reaching the same state, a role/target combination the guard does not cover, a failure window the mechanism leaves open.

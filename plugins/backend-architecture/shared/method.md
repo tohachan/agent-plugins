@@ -45,7 +45,7 @@ Coverage holes hide the findings that matter most, because the reviewed paths ar
 
 - `violation` and `unverified` get a full row each: check, state, evidence location, note.
 - `verified` and `not_applicable` are recorded as a count per area, plus a full row for each critical invariant (a check the audit's critical flows depend on). Never list hundreds of passing rows.
-- In a full audit the lead adds each area's counts into that area's `coverage` (`report.md`); a triage audit has no ledger.
+- In a full or focused audit the lead (or the single agent) adds each area's counts into that area's `coverage` (`report.md`); a triage audit has no ledger. Counts include every check, also those with a full row. A critical invariant is a property a critical flow depends on: a technical check or, with `domain=on`, a domain invariant.
 
 Reuse evidence across areas instead of re-recording it.
 

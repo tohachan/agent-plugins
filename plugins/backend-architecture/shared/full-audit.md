@@ -20,7 +20,7 @@ Before checking anything create the work file `work.md` in the audit's scratch d
    | D · Operations & structure | OBS, OPS, ARCH | CI/deploy/config artifacts, migrations in production, module boundaries |
 
    A unit kind not listed goes to the pass whose areas own its main risk, and its status is recorded from that pass; record the choice in the work file. A pass whose deep-check list exceeds about 40 units is split into several reviewers by unit batch (same areas, same full reference list), so no single context carries hundreds of units.
-3. **Domain passes (only with `domain=on`).** One pass per domain module. Up to three modules with few entry points each may share a pass, and an authorization registry (policy table or permission list) that spans modules may be split into parts of its own, one pass per part. Each pass uses `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md` plus any area rule that applies. With domain off, skip this phase entirely.
+3. **Domain passes (only with `domain=on`).** One pass per domain module, or per batch of up to three modules with few entry points each, or per registry slice (one policy table or permission list). Each pass uses `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md` plus any area rule that applies. With domain off, skip this phase entirely.
 4. **Coverage gate** (below). Nothing is scored before it passes.
 5. **Report** per `${CLAUDE_PLUGIN_ROOT}/shared/report.md`, built from the work file; render and validate before delivering.
 
@@ -33,7 +33,7 @@ When the Agent tool is available, run pass 2 and, only with domain on, pass 3 as
 - the pass's areas or domain checks, its full reference list and its deep-check batch, and the tier sampling rules;
 - the target repository root, because evidence references are relative to it;
 - the system map and flows, labelled as claims to verify;
-- the part of the work file the pass needs: the inventory units and flows that belong to its areas, not the whole file.
+- the part of the work file the pass needs (scope exclusions, its unit lists, the flows), not the whole file.
 
  Briefs stay neutral: never characterise the code's quality ("defensive", "well-tested", "don't invent findings" — restraint is already the method's rule). Do not pass a `model` parameter on these Agent calls: it would override the agents' own model and effort settings. The lead appends each returned ledger and its counts to the work file and, while writing, gives every candidate and every strength a stable ID: `C-<pass>-<n>` and `S-<pass>-<n>` (pass letter A–D, or `X1`… for a domain batch; `n` in return order). Reviewers do not assign IDs; the work file does, and every later hand-off cites them.
 
@@ -43,7 +43,7 @@ Append each verdict to the work file against its ID as it returns; the work file
 
 ## Execution without subagents
 
-Run the same passes sequentially in the table's order. After each pass append its ledger rows and unit statuses to the work file before opening the next pass's checklists; never carry a candidate only in context. Give candidates and strengths the same `C-`/`S-` IDs, and before keeping a High/Critical candidate or a critical strength, re-read its code for the opposite hypothesis — how this could be safe, or how the control could be bypassed — and record the result against the ID, with `unresolved` and refuted strengths handled as in the gate. With no verifier to ask, the recall probe is the lead's own last step per critical flow: name the most likely failure the passes missed, and check it as a `C-P-<n>` candidate.
+Run the same passes sequentially in the table's order. After each pass append its ledger rows, per-area counts and unit statuses to the work file before opening the next pass's checklists; never carry a candidate only in context. Give candidates and strengths the same `C-`/`S-` IDs, and before keeping a High/Critical candidate or a critical strength, re-read its code for the opposite hypothesis — how this could be safe, or how the control could be bypassed — and record the result against the ID, with `unresolved` and refuted strengths handled as in the gate. With no verifier to ask, the recall probe is the lead's own last step per critical flow: name the most likely failure the passes missed, and check it as a `C-P-<n>` candidate.
 
 Reviewers and verifiers have no shell. Anything that needs the target's code run (tests, an experiment) is collected by the lead as a named proposal; the lead runs it only with the user's explicit agreement, one at a time (`method.md`, "Verification and acceptance"), and records it as executed. Otherwise it stays `unexecuted`.
 

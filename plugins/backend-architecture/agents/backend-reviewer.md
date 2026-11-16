@@ -1,6 +1,6 @@
 ---
 name: backend-reviewer
-description: One pass of a backend-audit full audit — checks an assigned list of coverage units against assigned area checklists or domain checks and returns ledger rows. Launched by the backend-audit skill with a brief; not for standalone reviews.
+description: One pass of a backend-audit full audit — checks an assigned list of coverage units against assigned area checklists or domain checks and returns ledger rows and per-area counts. Launched by the backend-audit skill with a brief; not for standalone reviews.
 tools: Read, Grep, Glob
 model: sonnet
 effort: medium
@@ -18,7 +18,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/shared/method.md` (`domain=off` if the brief omits i
 - For each strength, state the boundary tested: the bypass attempted, the other writers searched, or the matrix checked.
 - You have no shell: you cannot run the target's tests or experiments. Everything you record is inspected; where an experiment would settle a point, name it as an open question for the lead.
 
-Ledger size: give a full row only to each `violation`, each `unverified` check and each critical invariant (`method.md`, "Check ledger"). Report every other `verified` and `not_applicable` check only as the per-area count in `## Counts`; the counts must cover every check of your areas, because the lead adds them into the report's `coverage`.
+Ledger size: give a full row only to each `violation`, each `unverified` check and each critical invariant (`method.md`, "Check ledger"). Report every other `verified` and `not_applicable` check only as the per-area count in `## Counts`; the counts must cover every check of your areas, because the lead adds them into the report's `coverage`. Counts include checks that also have a full row; `Area` is the check's area ID (a domain-only check is reported as a ledger row).
 
 Do not number candidates or strengths: the lead assigns `C-<pass>-<n>` and `S-<pass>-<n>` when it records them. Return exactly these sections, terse, no prose outside them:
 
