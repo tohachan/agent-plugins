@@ -1,18 +1,55 @@
 # backend-architecture
 
-Audit existing backends and design new ones with evidence-calibrated rules, critical-flow verification, a mandatory coverage inventory and one shared scored report format.
+Audit existing backend code and design new backend services against a rule base of best practices, bad practices and anti-patterns in 13 technical areas. Audits verify critical flows, keep a mandatory coverage inventory and produce a scored report in one shared format. The rule base is mostly legacy text: only a handful of facts are version-verified (see `knowledge/sources.md`), so findings are evidence-backed claims about your code, not certified statements about every rule.
+
+## Install
+
+```text
+/plugin marketplace add tohachan/agent-plugins
+/plugin install backend-architecture@agent-plugins
+```
+
+For a local checkout use `/plugin marketplace add <path-to-repo>`, or load the plugin directly with `claude --plugin-dir ./plugins/backend-architecture`. Skills are then available as `/backend-rules`, `/backend-audit` and `/backend-design` (or namespaced `/backend-architecture:backend-audit` if a name clashes).
+
+## Requirements
+
+- Claude Code with plugin and marketplace support.
+- Python 3 (standard library only) to validate and render reports with `scripts/render_report.py`. Without it the audit still runs, but the report tables are not rendered from the JSON.
+- The Agent tool is optional. With it, full audits run parallel `backend-reviewer` and `backend-verifier` agents; without it the same passes run sequentially in one session.
+- No network access, third-party packages or subprocesses are needed by the scripts.
+
+## Limits and not for
+
+- Knowledge targets **Go and Node.js** services. Other stacks get the language-neutral rules, but the runtime-specific notes and examples do not apply.
+- **Domain (business-logic) review is off by default**: `/backend-audit all` is a technical audit. Turn it on with `--domain on`; see Audit scope.
+- Audits are **static analysis** of code, configuration and documents you point at. They do not observe a running system, load, real data or production behavior, and a clean report is not a production sign-off.
+- The audit **reports and recommends; it does not edit or fix your code.**
+- Product defaults, limits and SDK behavior must be checked against your actual versions (`knowledge/sources.md`).
+- Structural validation of the plugin does not establish model quality; no speedup or accuracy improvement is claimed.
+- Not a substitute for a security audit, penetration test or load test.
 
 ## Skills and agents
 
 | Skill | Use it for | Example |
 | --- | --- | --- |
-| `backend-rules` | Checking code or a question against one area's rules, without a report. Loads only that area. | "сверься с правилами идемпотентности в charge.go" · `/backend-rules IDEM-BP-13` |
-| `backend-audit` | Reviewing code, a repo, infra/config or an architecture doc: one area, several, or all. | `/backend-audit all ./services/orders` · "проверь конкурентность и идемпотентность" |
-| `backend-design` | Designing a system, service or feature, or applying a pattern. | `/backend-design notification service, 5M users` · "как сделать идемпотентные вебхуки?" |
+| `backend-rules` | Checking code or a question against one area's rules, without a report. Loads only that area. | "сверься с правилами идемпотентности в charge.go" (check idempotency rules in charge.go) · `/backend-rules IDEM-BP-13` |
+| `backend-audit` | Reviewing code, a repo, infra/config or an architecture doc: one area, several, or all. | `/backend-audit all ./services/orders` · "проверь конкурентность и идемпотентность" (audit concurrency and idempotency) |
+| `backend-design` | Designing a system, service or feature, or applying a pattern. | `/backend-design notification service, 5M users` · "как сделать идемпотентные вебхуки?" (how to make webhooks idempotent?) |
 
 A full audit follows `shared/full-audit.md`: fixed passes (inventory → critical flows → four area-group passes → optional domain passes → coverage gate → report), a work file that holds the inventory and ledger across context compaction, and — when the Agent tool is available — parallel `backend-reviewer` agents per pass plus `backend-verifier` agents that independently try to refute every High/Critical candidate and critical strength. Without subagents the same passes run sequentially, each persisted before the next.
 
-Models: `backend-audit` (the lead that merges passes and judges) runs on `opus` at `medium` effort for its turn; `backend-reviewer` on `sonnet`/`medium`; `backend-verifier` on `opus`/`medium`, since refuting High/Critical claims is the narrowest and most consequential step. Change them in the frontmatter; a `model` passed on an Agent call would override the agents' setting, so the protocol forbids it.
+Models: `backend-audit` (the lead that merges passes and judges) runs on `opus` at `medium` effort for its turn; `backend-reviewer` on `sonnet`/`medium`; `backend-verifier` on `opus`/`medium`, since refuting High/Critical claims is the narrowest and most consequential step. `backend-rules` and `backend-design` set no model and inherit the session's. Change the pinned ones in the frontmatter; a `model` passed on an Agent call would override the agents' setting, so the protocol forbids it.
+
+## Terms
+
+- **Coverage inventory**: the list of units (handlers, consumers, jobs, tables, entry points) found in scope and which of them were actually read.
+- **Unit**: one item in that inventory.
+- **Ledger**: the running record, kept in a work file, of candidate findings and their status across passes and context compaction.
+- **Critical flow**: a path whose failure is costly (money, auth, data loss), verified end to end rather than file by file.
+- **Critical strength**: a claimed strong point on such a flow; the verifier tries to refute it like a High/Critical finding.
+- **Coverage gate**: the pass that checks the inventory before the report; unread units become explicit gaps.
+- **Readiness**: a verdict on a scope (for example `supported_in_scope`) that cannot be given while units remain uncovered.
+- **Code index**: a graph, LSP references, ctags or Sourcegraph used to enumerate callers and writers; graphify is one such code-graph tool. Optional.
 
 ## Audit scope
 
@@ -28,19 +65,7 @@ An explicit natural-language request to check business/domain logic also enables
 
 API · DATA · CACHE · MSG · CONC · IDEM · RES · SCALE · PERF · SEC · OBS · ARCH · OPS. Each is `knowledge/<prefix>/` with `decisions.md` (key decisions, for design), `checks.md` (audit checklist, for audit) and `rules.md` (`XX-BP/BAD/AP-n` bodies, looked up by ID). Reports cite the IDs. Index and aliases: `knowledge/README.md`.
 
-## Token budget
-
-Reading is by need, not by file: design reads `decisions.md`, audit reads `checks.md`, and rule bodies are fetched by Grep on their ID. Historical 0.3.0 → 0.4.0 comparison, before domain review became opt-in. Approximate knowledge + method bytes loaded (≈ 4 bytes per token):
-
-| Task | 0.3.0 | 0.4.0 |
-| --- | --- | --- |
-| One-area lookup (`backend-rules`, IDEM) | n/a — only a focused audit, ≈ 70 KB | ≈ 27 KB (README + `idem/rules.md`), no report |
-| Focused audit, one area (IDEM) | ≈ 70 KB | ≈ 38 KB + looked-up rules |
-| Full audit, single agent | ≈ 424 KB | ≈ 143 KB + looked-up rules |
-| Full audit, lead with subagents | ≈ 424 KB in one context | ≈ 34 KB lead; each pass ≈ 32–44 KB in its own context |
-| System design, ~8 areas | ≈ 39 KB + whole area files (≈ 30 KB each) | ≈ 31 KB + `decisions.md` (≈ 4 KB each) |
-
-Shared method and report contract shrank only modestly (≈ 39 KB → 34 KB with the skill); the savings come from not loading rule bodies wholesale. Rule text itself is unchanged. In 0.5.0, domain scope changes which checks run; runtime and token savings require comparative eval runs.
+Token-budget comparisons and version history are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Output
 
@@ -50,6 +75,7 @@ Both report-producing skills follow `shared/report.md`. Tables, findings, decisi
 
 ```
 .claude-plugin/plugin.json
+CHANGELOG.md
 agents/               backend-reviewer.md, backend-verifier.md (full-audit passes)
 knowledge/            README.md, sources.md, _TEMPLATE.md, <prefix>/{decisions,checks,rules}.md × 13
 shared/               method.md (evidence & coverage), full-audit.md (pass protocol), domain-audit.md (opt-in domain checks), report.md (contract)
@@ -71,10 +97,6 @@ python3 -B scripts/validate_report.py path/to/report.md --evidence-root path/to/
 
 The scripts use only the Python standard library (no third-party packages, network access or subprocesses); the validator reads files inside `--evidence-root` only, and the renderer writes only the report file it was given, after validation passes. `skills/*/evals/` keeps the Claude plugin eval layout; scaffold scripts copy fixtures into a disposable directory. Follow [the evaluation protocol](evals/README.md) for baseline/revised comparisons and token measurements. Structural validation does not establish model quality.
 
-## Changes in 0.5.0
+## Breaking change in 0.5.0
 
-Backend audit now excludes domain business logic by default; enable it with `--domain on` or an explicit request to review business rules. The mode applies to focused/full audits, reviewers, verifiers and mixed checklists. Domain-only instructions moved to `shared/domain-audit.md`. Reports render scope exclusions; excluded domain modules are represented using existing schema 2.1 fields, without treating the exclusion as a coverage failure. Design and direct rule lookup retain their scope. Evals cover default-off, explicit-off and explicit-on behavior; no measured speedup is claimed.
-
-## Changes in 0.4.0
-
-Rule IDs, rule text, report schema (2.1) and scoring are unchanged. Breaking for anything that references paths: each `knowledge/<area>.md` is split into `knowledge/<prefix>/{decisions,checks,rules}.md`; shared/assessment-method.md → `shared/method.md` (delegation moved to `shared/full-audit.md`); shared/output-format.md → `shared/report.md`. New: `render_report.py` (JSON → Markdown tables and item blocks; items gain `impact`/`fix`, decisions `options`/`why`/`tradeoff`/`revisit`), model/effort settings, `backend-rules` skill, `backend-reviewer` / `backend-verifier` agents, explicit full-audit protocol with a work file.
+`/backend-audit all` and "full audit" no longer include domain review. Add `--domain on` (or ask explicitly for business-logic review) to restore the previous scope. Details and earlier versions: [CHANGELOG.md](CHANGELOG.md).

@@ -1,10 +1,13 @@
 {
   "name": "backend-architecture",
   "version": "0.5.0",
-  "description": "Audit and design backend systems against best practices, bad practices and anti-patterns across 13 areas, with one scored, structured report format.",
+  "description": "Audit and design backend services against rules across 13 technical areas, or look up a single area's rules. Audit and design produce a coverage inventory and a scored, structured report; domain review is opt-in.",
   "author": {
-    "name": "t@bbbbb.cc"
+    "name": "tohachan"
   },
+  "homepage": "https://github.com/tohachan/agent-plugins/tree/main/plugins/backend-architecture",
+  "repository": "https://github.com/tohachan/agent-plugins",
+  "license": "MIT",
   "keywords": [
     "backend",
     "architecture",
