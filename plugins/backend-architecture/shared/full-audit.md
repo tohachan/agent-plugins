@@ -10,7 +10,7 @@ Before checking anything create `docs/audit/backend-audit-<YYYY-MM-DD>.work.md` 
 
 0. **Inventory (lead).** System map — entry points, modules/services, stores, brokers, external clients, deployment and trust boundaries — as claims to verify, not findings. Unit inventory per `method.md`; domain sources and their invariants only with `domain=on`; available code index; prior audits of the same target. Assign every in-scope unit and, when enabled, domain module to exactly one pass below and write the assignment to the work file.
 1. **Critical flows (lead).** Trace the 3–5 highest-impact flows end to end. Record each with file:line as claims for the passes to confirm or refute.
-2. **Area passes.** Each pass reads `method.md` and only its own `checks.md` files, applies the domain scope filter before following rule references, resolves remaining rule bodies by ID and gives every check of its areas a ledger state (`not_applicable` with a reason for excluded domain checks).
+2. **Area passes.** Each pass reads `${CLAUDE_PLUGIN_ROOT}/shared/method.md` and only its own `checks.md` files, applies the domain scope filter before following rule references, resolves remaining rule bodies by ID and gives every check of its areas a ledger state (`not_applicable` with a reason for excluded domain checks).
 
    | Pass | Areas | Default unit kinds owned |
    | --- | --- | --- |
@@ -22,13 +22,13 @@ Before checking anything create `docs/audit/backend-audit-<YYYY-MM-DD>.work.md` 
    A unit kind not listed goes to the pass whose areas own its main risk; record that choice in the work file.
 3. **Domain passes (only with `domain=on`).** One per domain module, or per batch of up to three small modules or one registry slice: `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md` plus any area rule that applies. With domain off, skip this phase entirely.
 4. **Coverage gate** (below). Nothing is scored before it passes.
-5. **Report** per `report.md`, built from the work file; render and validate before delivering.
+5. **Report** per `${CLAUDE_PLUGIN_ROOT}/shared/report.md`, built from the work file; render and validate before delivering.
 
 ## Execution with subagents
 
 When the Agent tool is available, run pass 2 and, only with domain on, pass 3 as parallel `backend-architecture:backend-reviewer` agents — one per area pass, one per domain batch — unless the user asked for a single-agent run. Each brief contains: the resolved plugin root path (the value of `${CLAUDE_PLUGIN_ROOT}`, spelled out because a subagent may not have the variable), the resolved domain mode and exclusions, the pass's areas or domain checks, its unit list, domain sources only when enabled, the system map and flows labelled as claims to verify, and the work-file excerpt it needs. Briefs stay neutral: never characterise the code's quality ("defensive", "well-tested", "don't invent findings" — restraint is already the method's rule). Do not pass a `model` parameter on these Agent calls: it would override the agents' own model and effort settings. The lead appends each returned ledger to the work file.
 
-Then send every High/Critical candidate, and every strength standing for a critical invariant, to `backend-architecture:backend-verifier` agents: up to five claims per agent, never to the reviewer that recorded them, giving code locations, the claim and the resolved domain mode/exclusions, not the conclusion. Excluded business policies do not become verifier tasks.
+Then send every High/Critical candidate, and every strength standing for a critical invariant, to `backend-architecture:backend-verifier` agents (each brief carries the resolved plugin root path, as for reviewers): up to five claims per agent, never to the reviewer that recorded them, giving code locations, the claim and the resolved domain mode/exclusions, not the conclusion. Excluded business policies do not become verifier tasks.
 
 ## Execution without subagents
 

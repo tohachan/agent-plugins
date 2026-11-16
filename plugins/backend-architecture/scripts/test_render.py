@@ -39,7 +39,7 @@ class RenderTests(unittest.TestCase):
     def test_render_records_validation_and_script(self):
         self.assertEqual(self.run_on(self.report), 0)
         text = self.path.read_text()
-        self.assertIn('**Validation:** passed; rendered by `' + str(render_report.SCRIPT) + '` (plugin ', text)
+        self.assertIn('**Schema validation:** passed; rendered by `' + str(render_report.SCRIPT) + '` (plugin ', text)
 
     def test_domain_exclusion_is_visible_in_rendered_report(self):
         self.report['provenance']['exclusions'].append('Domain business logic (domain=off)')

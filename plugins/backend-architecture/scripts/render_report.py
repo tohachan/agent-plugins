@@ -50,7 +50,7 @@ def header(r):
                  [[r['mode'], r['target'], ', '.join(a['id'] for a in r['areas']), r['date'], overall, o.get('readiness'), o.get('confidence') or 'unknown']])
     exclusions = r.get('provenance', {}).get('exclusions', [])
     if exclusions: result += '\n\n**Exclusions:** ' + cell(exclusions)
-    return result + f'\n\n**Validation:** passed; rendered by `{SCRIPT}` (plugin {plugin_version()}).'
+    return result + f'\n\n**Schema validation:** passed; rendered by `{SCRIPT}` (plugin {plugin_version()}).'
 
 def scorecard(r):
     rows, totals = [], dict(critical=0, high=0, medium=0, low=0)
