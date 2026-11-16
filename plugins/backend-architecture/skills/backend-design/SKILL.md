@@ -34,7 +34,7 @@ Choose the simplest design meeting the requirements; every extra component state
 
 Walk the scenarios that apply to the design: slow/down dependency; duplicate or out-of-order event; client retry; crash between durable steps; peak/hot tenant; mixed-version deploy; leaked credential; restore after loss. Add the role, approval and retention scenarios only when the requirements brought them in. Apply relevant checks from `checks.md` as hypotheses, not pattern mandates. This is your own review of your own proposal: say what it cannot prove, and name what an independent reader or a run would have to confirm.
 
-Build the method's traceability table for critical promises, with states/transitions and recovery for nontrivial flows, abuse scenarios for trust crossings, capacity measurements still needed, and migration/reconciliation/rollback gates. Fix contradictions and cheap risks; record residual risks, and never invent one to fill a template. Every proposed test is planned until run.
+Build the method's traceability table for critical promises, with states/transitions and recovery for nontrivial flows, abuse scenarios for trust crossings, capacity measurements still needed, and migration/reconciliation/rollback gates. Fix contradictions and cheap risks; record residual risks, and never invent one to fill a template. Mark each proposed test `planned` until you have run it.
 
 ## 4. Report
 
