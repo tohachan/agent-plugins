@@ -46,7 +46,7 @@
 
 `MSG-BAD-1` — **Auto-ack or ack before processing.** Crash after ack loses the message. → Instead: MSG-BP-1.
 
-`MSG-BAD-2` — **Kafka auto-commit with asynchronous processing** (records handed to goroutines/promises, offset committed on next poll). Offsets advance past unprocessed records; a crash loses them. → Instead: commit per partition only the processed prefix — the highest offset with every earlier record in that partition finished — never an offset past an unprocessed or failed message; failed records go to retry/DLT before the commit passes them (MSG-BP-1, MSG-BP-10).
+`MSG-BAD-2` — **Kafka auto-commit with asynchronous processing** (records handed to goroutines/promises, offset committed on next poll). Offsets advance past unprocessed records; a crash loses them. → Instead: commit per partition only the processed prefix — the highest offset with every earlier record in that partition finished — never an offset past an unprocessed or failed message; failed records go to retry/DLT before the commit passes them (MSG-BP-1, MSG-BP-5, MSG-BP-10).
 
 `MSG-BAD-3` — **Publishing inside the DB transaction, or right after commit without an outbox.** Message sent but transaction rolls back (ghost event), or commit succeeds and publish fails (lost event). → Instead: MSG-BP-3.
 
