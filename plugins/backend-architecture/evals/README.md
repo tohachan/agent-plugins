@@ -14,18 +14,18 @@ Graders judge substance: the correct decision, the trade-off, the failure scenar
 
 | Skill | Case | What it checks | Domain | Agent tool |
 | --- | --- | --- | --- | --- |
-| backend-audit | consumer-messaging-only | Focused audit of messaging and idempotency only; no findings from other areas | off | no |
-| backend-audit | domain-invariant-coverage | Coverage discipline in a neutral domain: guard missing in some writers, unreachable purge predicate, stranded workflow state, registry-derived coverage inventory | on | no |
+| backend-audit | consumer-messaging-only | Focused request, default triage form (schema 3.0, no scores): messaging and idempotency only; no findings from other areas | off | no |
+| backend-audit | domain-invariant-coverage | `--full` (schema 3.0, depth full). Coverage discipline in a neutral domain: guard missing in some writers, unreachable purge predicate, stranded workflow state, registry-derived coverage inventory | on | no |
 | backend-audit | gateway-owned-auth | Traces a Node.js control through gateway configuration and deployment | off | no |
 | backend-audit | healthy-boundaries | Healthy code: no invented High/Critical findings; valid inherited HTTP deadline preserved | off | no |
 | backend-audit | incomplete-evidence | Withheld schema: unknowns stay open questions, no fabricated verification | off | no |
-| backend-audit | orders-service-full-audit | Full audit protocol: work file, ordered persisted passes, coverage gate, domain=off, renderer run, plus the seeded defects | off | no (sequential path) |
+| backend-audit | orders-service-full-audit | `--full`. Full audit protocol (work file, ordered persisted passes, risk-tier coverage, ID convergence): coverage gate, domain=off, renderer run, plus the seeded defects | off | no (sequential path) |
 | backend-audit | partition-commit-gap | A plausible but unsafe fix is rejected | off | no |
 | backend-audit | split-dedup-transaction | Changing the transaction boundary and schema while preserving guarantees | off | no |
-| backend-audit | technical-audit-default | Domain review excluded by default, including delegated scope; seeded authorization finding kept | off (default) | yes |
-| backend-audit | technical-audit-explicit-off | The same boundary in a focused SEC audit with `--domain off` | off | no |
+| backend-audit | technical-audit-default | `--full`. Domain review excluded by default, including delegated scope; seeded authorization finding kept | off (default) | yes |
+| backend-audit | technical-audit-explicit-off | The same boundary in a focused SEC `--full` audit with `--domain off` | off | no |
 | backend-audit | triage-routing | "Look at my service" routes to the triage audit, not the full protocol | off | no |
-| backend-design | idempotent-payment-webhooks | Focused pattern design: dedup, ordering, fast ack, signature, Go sketch | off | no |
+| backend-design | idempotent-payment-webhooks | A pattern question normally routes to backend-rules; here backend-design is invoked explicitly, so this tests the focused design form (decision with a rejected alternative, assumptions, Go sketch, residual risks, verification) | off | no |
 | backend-design | notification-service-design | Full design: provider limits, estimates, decisions, risks, verification | off | no |
 | backend-design | ordered-outbox-deltas | Ordered deltas through an outbox; crash and concurrent-relay scenarios | off | no |
 | backend-design | small-catalog-monolith | Simplest design for a small load; no invented risk from team size | off | no |
@@ -34,6 +34,8 @@ Graders judge substance: the correct decision, the trade-off, the failure scenar
 | backend-rules | pattern-question-routing | A pattern question routes to backend-rules, bounded to 1-3 areas, with an offer to move to design | off | no |
 
 ## Notes on specific cases
+
+- Report schema is 3.0. Without `--full`, a backend-audit request yields a triage (depth `triage`, no scores, no work file); the cases that test the scorecard, coverage inventory or readiness pass `--full` in their prompt, and the scoped or evidence-calibration cases (consumer-messaging-only, gateway-owned-auth, healthy-boundaries, incomplete-evidence, partition-commit-gap, split-dedup-transaction) grade substance in the triage form. `triage-routing` is the triage case.
 
 - `orders-service-full-audit` runs without the Agent tool, so it exercises the sequential full-audit path; add a variant with `Agent` in `allowed_tools` to exercise the reviewer/verifier path, and compare both on recall and tokens.
 - `triage-routing` and `pattern-question-routing` test routing and the target forms of the triage audit and the rules lookup; a skill version that still sends such requests to the full audit or to design will fail them.
