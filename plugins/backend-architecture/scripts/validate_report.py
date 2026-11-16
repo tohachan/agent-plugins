@@ -16,7 +16,8 @@ AREAS = {'API', 'DATA', 'CACHE', 'MSG', 'CONC', 'IDEM', 'RES', 'SCALE', 'PERF', 
 RANK = {'info': 0, 'low': 1, 'medium': 2, 'high': 3, 'critical': 4}
 UNIT_STATUSES = ('checked', 'sampled', 'not_covered')
 LEDGER_STATUSES = ('verified', 'violation', 'unverified', 'not_applicable')
-PRIOR_VERDICTS = ('reproduced', 'refuted', 'not_applicable', 'unverifiable')
+PRIOR_VERDICTS = ('still_present', 'fixed', 'not_applicable', 'not_rechecked')
+PRIOR_MODES = ('audit', 'design')
 PRIORITIES = ('now', 'next', 'later')
 RISK_TIERS = ('read-only', 'writes-state', 'trust-boundary')
 SAMPLED_TIER = 'read-only'
@@ -77,7 +78,7 @@ def coverage_inventory(report, require, strings):
             require(False, f'coverage unit {kind}: total/checked/sampled/not_covered must be non-negative integers'); continue
         total, checked, samp, nc = nums
         require(checked + samp + nc == total, f'coverage unit {kind}: checked + sampled + not_covered must equal total (no unassigned units)')
-        require(text(u.get('owner')), f'coverage unit {kind}: owner pass required')
+        require(u.get('owner') is None or text(u['owner']), f'coverage unit {kind}: owner is optional; when present it must be a nonempty string')
         require(u.get('risk_tier') is None or u['risk_tier'] in RISK_TIERS, f'coverage unit {kind}: risk_tier must be one of {", ".join(RISK_TIERS)}')
         if samp:
             require(text(u.get('sampling')), f'coverage unit {kind}: sampling rule and denominator required')
@@ -92,7 +93,8 @@ def coverage_inventory(report, require, strings):
     for m in modules:
         if not isinstance(m, dict):
             require(False, 'domain module must be an object'); continue
-        require(text(m.get('id')) and text(m.get('owner')), 'domain module id and owner required')
+        require(text(m.get('id')), 'domain module id required')
+        require(m.get('owner') is None or text(m['owner']), f'domain module {m.get("id")}: owner is optional; when present it must be a nonempty string')
         require(m.get('status') in UNIT_STATUSES, f'domain module {m.get("id")}: status must be checked/sampled/not_covered')
         uncovered |= m.get('status') == 'not_covered'
         sampled |= m.get('status') == 'sampled'
@@ -142,7 +144,100 @@ def check_models(prov, require):
         require(isinstance(models, list) and all(isinstance(m, dict) and all(isinstance(m.get(k), str) and bool(m[k].strip()) for k in ('role', 'model')) and isinstance(m.get('effort', ''), str) for m in models),
                 'provenance.models must be an array of {role, model, optional effort}')
 
-def validate_design(report, require, strings, rules):
+def text_ok(v): return isinstance(v, str) and bool(v.strip())
+
+def check_prior(report, require, strings, evidence, prior):
+    """The optional `prior` input: pins the prior report in provenance.prior and checks the verdicts, requirements and checks built on it.
+    `prior` is the loaded prior report when the caller has it (render/validate --prior); it adds completeness checks."""
+    prov = report.get('provenance')
+    pin = prov.get('prior') if isinstance(prov, dict) else None
+    decs = [d for d in report.get('decisions') or [] if isinstance(d, dict)] if isinstance(report.get('decisions'), list) else []
+    if prior is not None and not isinstance(prior, dict): require(False, 'the prior report must be a JSON object'); prior = None
+    mode = report.get('mode')
+    fields = [k for k in ('prior_verdicts', 'prior_checks', 'requirements') if k in report]
+    if mode == 'design' and any('closes' in d for d in decs): fields.append('closes')
+    if pin is None:
+        require(not fields, f'{", ".join(fields)} need provenance.prior (source, mode, revision, date)')
+        return
+    if not isinstance(pin, dict):
+        require(False, 'provenance.prior must be an object'); return
+    for key in ('source', 'revision'): require(text_ok(pin.get(key)), f'provenance.prior.{key} required (revision is the prior report\'s own; "unknown" when it has none)')
+    try: date.fromisoformat(pin.get('date', ''))
+    except (TypeError, ValueError): require(False, 'provenance.prior.date must be ISO YYYY-MM-DD')
+    pmode = pin.get('mode')
+    if pmode not in PRIOR_MODES:
+        require(False, 'provenance.prior.mode must be audit or design'); return
+    require(not (mode == 'design' and pmode == 'design'), 'a design takes an audit as prior, not another design')
+    expected = {'audit': {'prior_verdicts'}, 'design': {'prior_checks'}}.get(pmode, set()) if mode == 'audit' else {'requirements'} if pmode == 'audit' else set()
+    for k in set(fields) - expected - {'closes'}: require(False, f'{k} does not fit a {mode} report with a {pmode} prior')
+    if 'closes' in fields: require(mode == 'design' and pmode == 'audit', 'decision closes needs an audit prior')
+    if mode == 'audit' and pmode == 'audit':
+        verdicts = report.get('prior_verdicts')
+        require(isinstance(verdicts, list) and all(isinstance(x, dict) for x in verdicts), 'prior_verdicts must be an array of objects (one per prior item)')
+        verdicts = verdicts if isinstance(verdicts, list) else []
+        items = {str(i.get('fingerprint')): i for i in report.get('items', []) if isinstance(i, dict)}
+        seen = []
+        for x in verdicts:
+            if not isinstance(x, dict): continue
+            label = f'prior_verdicts {x.get("item")}'
+            for key in ('item', 'title', 'fingerprint'): require(text_ok(x.get(key)), f'{label}: {key} required')
+            seen.append(str(x.get('fingerprint')))
+            verdict = x.get('verdict')
+            require(verdict in PRIOR_VERDICTS, f'{label}: verdict must be {"/".join(PRIOR_VERDICTS)}')
+            if verdict == 'fixed':
+                require(text_ok(x.get('fixed_at')), f'{label}: fixed needs fixed_at (the revision where the fix is seen)')
+                evidence(x.get('evidence'), label)
+            if verdict in ('not_applicable', 'not_rechecked'): require(text_ok(x.get('note')), f'{label}: {verdict} needs a note with the reason')
+            if verdict == 'not_applicable': evidence(x.get('evidence'), label)
+            if verdict == 'still_present': require(str(x.get('fingerprint')) in items, f'{label}: still_present needs a current item with the same fingerprint')
+            if verdict in ('fixed', 'not_applicable'): require(str(x.get('fingerprint')) not in items, f'{label}: {verdict} but a current item carries its fingerprint')
+        require(len(set(seen)) == len(seen), 'prior_verdicts: duplicate fingerprints')
+        if isinstance(prior, dict):
+            want = {str(i.get('fingerprint')): str(i.get('id')) for i in (prior.get('items') if isinstance(prior.get('items'), list) else []) if isinstance(i, dict)}
+            require(set(seen) == set(want), f'prior_verdicts must cover exactly the prior items: missing {sorted(set(want) - set(seen))}, unknown {sorted(set(seen) - set(want))}')
+            for x in verdicts: require(not isinstance(x, dict) or want.get(str(x.get('fingerprint')), x.get('item')) == x.get('item'), f'prior_verdicts {x.get("item")}: item id differs from the prior report')
+    if mode == 'audit' and pmode == 'design':
+        checks = report.get('prior_checks')
+        require(isinstance(checks, list) and bool(checks) and all(isinstance(x, dict) for x in checks), 'prior_checks must be a nonempty array of objects (one per prior D-n and V-n)')
+        checks = checks if isinstance(checks, list) else []
+        refs = [str(x.get('ref')) for x in checks if isinstance(x, dict)]
+        for x in checks:
+            if not isinstance(x, dict): continue
+            label = f'prior_checks {x.get("ref")}'
+            require(bool(re.fullmatch(r'[DV]-\d+', str(x.get('ref')))), f'{label}: ref must be a D-n or V-n of the prior design')
+            require(x.get('status') in LEDGER_STATUSES, f'{label}: status must be one of {"/".join(LEDGER_STATUSES)}')
+            if x.get('status') in ('verified', 'violation'): evidence(x.get('evidence'), label)
+            else: require(strings(x.get('evidence', [])) and text_ok(x.get('note')), f'{label}: {x.get("status")} needs a note and a string-array evidence')
+        require(len(set(refs)) == len(refs), 'prior_checks: duplicate refs')
+        if isinstance(prior, dict):
+            want = {str(x.get('id')) for k in ('decisions', 'validation') for x in (prior.get(k) if isinstance(prior.get(k), list) else []) if isinstance(x, dict)}
+            require(set(refs) == want, f'prior_checks must cover exactly the prior design D-n and V-n: missing {sorted(want - set(refs))}, unknown {sorted(set(refs) - want)}')
+    if mode == 'design' and pmode == 'audit':
+        reqs = report.get('requirements')
+        require(isinstance(reqs, list) and all(isinstance(x, dict) for x in reqs), 'requirements must be an array of objects (one per non-Info prior finding)')
+        reqs = reqs if isinstance(reqs, list) else []
+        froms = [str(x.get('from')) for x in reqs if isinstance(x, dict)]
+        for x in reqs:
+            if not isinstance(x, dict): continue
+            label = f'requirements {x.get("from")}'
+            require(bool(re.fullmatch(r'F-\d+', str(x.get('from')))), f'{label}: from must be an F-n of the prior audit')
+            for key in ('fingerprint', 'requirement'): require(text_ok(x.get(key)), f'{label}: {key} required')
+        require(len(set(froms)) == len(froms), 'requirements: duplicate from')
+        for d in decs:
+            if 'closes' not in d: continue
+            label = f'{d.get("id")}'
+            require(strings(d['closes']) and bool(d['closes']) and set(d['closes']) <= set(froms), f'{label}: closes must name F-n listed in requirements')
+            for key in ('migration', 'rollback'): require(text_ok(d.get(key)), f'{label}: {key} step required when a decision closes prior findings')
+        if isinstance(prior, dict):
+            want = {str(i.get('fingerprint')): str(i.get('id')) for i in (prior.get('items') if isinstance(prior.get('items'), list) else []) if isinstance(i, dict) and i.get('severity') != 'info'}
+            got = {str(x.get('fingerprint')): str(x.get('from')) for x in reqs if isinstance(x, dict)}
+            require(got == want, f'requirements must cover exactly the non-Info prior items: missing {sorted(set(want) - set(got))}, unknown {sorted(set(got) - set(want))}')
+    if isinstance(prior, dict):
+        require(prior.get('mode') == pmode, f'prior report is a {prior.get("mode")}, provenance.prior.mode says {pmode}')
+        require(str((prior.get('provenance') if isinstance(prior.get('provenance'), dict) else {}).get('revision', 'unknown')) == str(pin.get('revision')), 'provenance.prior.revision differs from the prior report\'s provenance.revision')
+        require(prior.get('date') == pin.get('date'), 'provenance.prior.date differs from the prior report\'s date')
+
+def validate_design(report, require, strings, rules, evidence=None, prior=None):
     """Design reports (schema 3.0): assumptions registry, decisions, risks, validation; no scores or readiness."""
     def text(v): return isinstance(v, str) and bool(v.strip())
     prov = report.get('provenance')
@@ -197,6 +292,7 @@ def validate_design(report, require, strings, rules):
             require(text(v.get(key)), f'{label}: {key} required')
         require(strings(v.get('evidence')), f'{label}: evidence must be a string array')
         if v.get('status') in ('passed', 'failed'): require(bool(v.get('evidence')), f'{label}: passed/failed needs result evidence')
+    check_prior(report, require, strings, evidence or (lambda *_: None), prior)
 
 def validate_triage_extras(report, require, strings):
     ne = report.get('not_examined')
@@ -207,7 +303,7 @@ def validate_triage_extras(report, require, strings):
     fa = report.get('full_audit_suggested')
     require(fa is None or (isinstance(fa, str) and bool(fa.strip())), 'full_audit_suggested must be null or a nonempty string')
 
-def validate(report, evidence_root=None):
+def validate(report, evidence_root=None, prior=None):
     errors = []
     def require(condition, message):
         if not condition: errors.append(message)
@@ -235,7 +331,7 @@ def validate(report, evidence_root=None):
     try: date.fromisoformat(report.get('date', ''))
     except (TypeError, ValueError): errors.append('date must be ISO YYYY-MM-DD')
     if mode == 'design':
-        validate_design(report, require, strings, known_rules())
+        validate_design(report, require, strings, known_rules(), evidence, prior)
         return errors
     depth = report.get('depth')
     require(depth in ('full', 'triage'), 'audit depth must be full or triage')
@@ -362,15 +458,7 @@ def validate(report, evidence_root=None):
     require(len(set(d_ids)) == len(d_ids), 'Duplicate decision ids')
     require(not decisions, 'Audit decisions must be empty')
     uncovered = coverage_inventory(report, require, strings) if not triage or 'coverage_inventory' in report else False
-    priors = report.get('prior_reports')
-    if priors is not None:
-        require(isinstance(priors, list) and all(isinstance(x, dict) for x in priors), 'prior_reports must be an array of objects')
-        for x in priors if isinstance(priors, list) else []:
-            if not isinstance(x, dict): continue
-            for key in ('source', 'item'):
-                require(isinstance(x.get(key), str) and bool(x[key].strip()), f'prior_reports.{key} required')
-            require(x.get('verdict') in PRIOR_VERDICTS, 'prior_reports.verdict must be reproduced/refuted/not_applicable/unverifiable')
-            require(strings(x.get('evidence')) and bool(x.get('evidence')), 'prior_reports.evidence must be a nonempty string array')
+    check_prior(report, require, strings, evidence, prior)
     overall = report.get('overall', {})
     if not isinstance(overall, dict): return errors + ['overall must be an object']
     if triage and 'overall' not in report: return errors
@@ -406,8 +494,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('report', type=Path)
     parser.add_argument('--evidence-root', type=Path)
+    parser.add_argument('--prior', type=Path, help='the prior report this one builds on (checks that the verdicts, requirements or checks cover it)')
     args = parser.parse_args()
-    try: errors = validate(load_report(args.report), args.evidence_root)
+    try: errors = validate(load_report(args.report), args.evidence_root, load_report(args.prior) if args.prior else None)
     except (OSError, ValueError, TypeError, KeyError) as exc: errors = [str(exc)]
     if errors:
         for error in errors: print('ERROR:', error)

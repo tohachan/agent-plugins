@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: prior-fixed-revision
+expected_outcome: |
+  A change audit with an earlier audit as `prior`, on a later revision of the same fixture: the prior item whose cause was fixed gets the verdict "fixed at <revision>" with evidence of the new code, the prior item that was not fixed is still present under the same F-n, the prior revision is pinned in provenance, and nothing fixed is reported again as a finding.
+context:
+  scaffold_script: place-files.sh

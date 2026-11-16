@@ -1,0 +1,21 @@
+{
+  "schema_version": "3.0",
+  "mode": "audit",
+  "depth": "triage",
+  "target": "example",
+  "date": "2026-11-01",
+  "provenance": {"revision": "a1b2c3d", "dirty": false, "environment": "source-only", "plugin_version": "0.6.0", "scope": ["IDEM", "DATA"], "exclusions": ["Domain business logic (domain=off)", "runtime behavior"]},
+  "units_counted": [{"kind": "entry_points", "total": 2}],
+  "items": [
+    {"id": "F-1", "area": "IDEM", "severity": "high", "rules": ["IDEM-BP-7", "IDEM-BAD-1"], "effort": "S", "priority": "now",
+     "title": "Inbox marker is committed outside the effect's transaction", "fingerprint": "example:Ship:inbox-insert-outside-effect-transaction", "confidence": "confirmed",
+     "evidence": ["service.go:29", "service.go:34"], "verification": "Planned: fail the shipments insert after the marker, redeliver the event, expect one shipment.",
+     "impact": "A failure after the marker leaves the event marked seen and the shipment never created; every redelivery is skipped.", "fix": "Insert the marker with tx.ExecContext so marker and effect commit together."},
+    {"id": "F-2", "area": "DATA", "severity": "medium", "rules": ["DATA-BP-1"], "effort": "S", "priority": "next",
+     "title": "Nothing prevents two shipments for one order", "fingerprint": "example:shipments:no-unique-order", "confidence": "likely",
+     "evidence": ["schema.sql:2"], "verification": "Planned: insert the same order_id twice, expect the second to be rejected.",
+     "impact": "Two events for one order with different event IDs create two shipments.", "fix": "Add a unique constraint on shipments(order_id) or key the effect by order."}
+  ],
+  "not_examined": ["Lookup (read-only, bounded)", "Broker adapter", "Runtime recovery behavior"],
+  "full_audit_suggested": null
+}
