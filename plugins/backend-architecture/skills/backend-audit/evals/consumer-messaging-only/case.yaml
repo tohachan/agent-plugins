@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: consumer-messaging-only
 expected_outcome: |
-  A report scoped to messaging and idempotency/consistency only, with the consumer issues found, and any scores limited to those areas.
+  A report scoped to messaging and idempotency/consistency only, with the consumer issues found, in the default triage form (no numeric scores required; any score limited to those areas).
 context:
   scaffold_script: place-files.sh
