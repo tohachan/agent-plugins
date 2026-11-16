@@ -170,6 +170,9 @@ class ContractRuleTests(unittest.TestCase):
         self.assertTrue(any('risk_tier' in x for x in validate(self.report)))
         u['risk_tier'] = 'read-only'
         self.assertEqual(validate(self.report), [])
+    def test_risk_tier_value_is_checked_even_unsampled(self):
+        self.ci()['units'][0]['risk_tier'] = 'bogus'
+        self.assertTrue(any('risk_tier must be' in x for x in validate(self.report)))
     def test_sampled_module_needs_read_only_tier(self):
         self.ci()['domain_modules'][0]['status'] = 'sampled'; self.ci()['gaps'] = ['orders/lookup sampled']
         self.assertTrue(any('risk_tier' in x for x in validate(self.report)))

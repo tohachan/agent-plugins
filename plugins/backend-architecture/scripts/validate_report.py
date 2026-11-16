@@ -3,6 +3,7 @@
 import argparse
 from collections import Counter
 from datetime import date
+import math
 from decimal import Decimal, ROUND_HALF_UP
 import json
 from pathlib import Path
@@ -36,14 +37,14 @@ def derive(report):
         if a.get('id') not in counts: continue
         a['counts'] = None if a.get('status') == 'not_applicable' else {k: counts[a['id']][k] for k in SEVERITIES}
         provisional |= a.get('status') in ('partial', 'unverified')
-        if a.get('status') not in ('unverified', 'not_applicable') and type(a.get('score')) in (int, float): inputs.append(a['score'])
+        if a.get('status') not in ('unverified', 'not_applicable') and type(a.get('score')) in (int, float) and math.isfinite(a['score']): inputs.append(a['score'])
     o = report.setdefault('overall', {})
     critical = any(i.get('severity') == 'critical' for i in items)
     raw = (sum(Decimal(str(x)) for x in inputs) / len(inputs)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP) if inputs else None
     o['score'] = float(min(raw, Decimal('4.0')) if critical else raw) if raw is not None else None
     o.update(score_inputs=inputs, denominator=len(inputs), capped=critical, provisional=provisional)
     found = [str(i.get('id')) for i in items if i.get('severity') in ('critical', 'high')]
-    extra = [b for b in o.get('blockers', []) if isinstance(b, str) and b not in found] if isinstance(o.get('blockers'), list) else []
+    extra = [b for b in o.get('blockers', []) if b not in found] if isinstance(o.get('blockers'), list) else []
     o['blockers'] = found + extra
     if not inputs: o['confidence'] = None
     ci = report.get('coverage_inventory')
@@ -77,6 +78,7 @@ def coverage_inventory(report, require, strings):
         total, checked, samp, nc = nums
         require(checked + samp + nc == total, f'coverage unit {kind}: checked + sampled + not_covered must equal total (no unassigned units)')
         require(text(u.get('owner')), f'coverage unit {kind}: owner pass required')
+        require(u.get('risk_tier') is None or u['risk_tier'] in RISK_TIERS, f'coverage unit {kind}: risk_tier must be one of {", ".join(RISK_TIERS)}')
         if samp:
             require(text(u.get('sampling')), f'coverage unit {kind}: sampling rule and denominator required')
             require(u.get('risk_tier') == SAMPLED_TIER, f'coverage unit {kind}: sampled applies only to risk_tier {SAMPLED_TIER}; units that write state or money or cross a trust boundary are checked or not_covered')
