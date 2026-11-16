@@ -48,7 +48,7 @@ Models: `backend-audit` (the lead that merges passes and judges) runs on `opus` 
 - **Critical flow**: a path whose failure is costly (money, auth, data loss), verified end to end rather than file by file.
 - **Critical strength**: a claimed strong point on such a flow; the verifier tries to refute it like a High/Critical finding.
 - **Coverage gate**: the pass that checks the inventory before the report; unread units become explicit gaps.
-- **Readiness**: a verdict on a scope (for example `supported_in_scope`) that cannot be given while units remain uncovered.
+- **Readiness** (full audit only): a verdict on a scope (for example `supported_in_scope`) that cannot be given while units remain uncovered.
 - **Code index**: a graph, LSP references, ctags or Sourcegraph used to enumerate callers and writers; graphify is one such code-graph tool. Optional.
 
 ## Audit scope

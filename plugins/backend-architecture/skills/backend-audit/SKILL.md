@@ -1,6 +1,6 @@
 ---
 name: backend-audit
-description: Audit existing backend code, configuration or an architecture document for evidenced correctness, security, reliability and operability risks. Default is a triage of the 3–5 highest-impact risks with evidence and an honest list of what was not examined, with no numeric scores; `--full` runs the complete protocol with coverage inventory, scorecard and readiness. Use for "посмотри мой сервис", backend reviews, bottlenecks, concurrency, messaging and architecture assessment, "проверь архитектуру". Technical by default; business/domain logic is opt-in. Not for a pattern or "how should I" question (backend-rules) and not for designing new behavior (backend-design).
+description: Audit an existing backend service, repository, configuration or architecture document (not a single snippet or pattern question) for evidenced correctness, security, reliability and operability risks. Default is a triage of the 3–5 highest-impact risks with evidence and an honest list of what was not examined, with no numeric scores; `--full` runs the complete protocol with coverage inventory, scorecard and readiness. Use for "посмотри мой сервис", backend reviews, bottlenecks, concurrency, messaging and architecture assessment, "проверь архитектуру". Technical by default; business/domain logic is opt-in. Not for a pattern or "how should I" question (backend-rules) and not for designing new behavior (backend-design).
 argument-hint: "[areas | all] [path] [--full] [--domain on|off]"
 model: opus
 effort: medium
@@ -31,6 +31,7 @@ Record revision, environment, assumptions and unavailable evidence. The target m
 2. **Critical flows** — pick the 3–5 whose failure is costliest (money, auth, data loss, ordering) and trace each end to end with file:line.
 3. **Mechanism boundaries** — apply the mechanism boundaries of `${CLAUDE_PLUGIN_ROOT}/shared/method.md` to those flows; read the relevant areas' `${CLAUDE_PLUGIN_ROOT}/knowledge/<prefix>/checks.md` (apply the method's domain scope filter), and resolve cited rules by Grep on their ID, never by reading a whole `rules.md`. Check the opposite hypothesis before keeping a High/Critical candidate: the control's other plausible owners (callers, schema, middleware, gateway, provider contract).
 4. **Findings** — the top risks, each with realistic impact, file:line evidence, a minimal fix and a verification, severity per `${CLAUDE_PLUGIN_ROOT}/shared/report.md`. A healthy system yields few or no findings; say so instead of padding. No numeric scores, no per-check ledger, no work file, no verifiers.
+   With domain review enabled (`--domain on`), also read `${CLAUDE_PLUGIN_ROOT}/shared/domain-audit.md` and apply its checks to the traced flows; domain findings are ordinary findings, and the report omits the domain-off exclusion. Domain modules never examined go to the not-examined list.
 5. **Not examined** — an honest list of what was not looked at and why (areas, units, runtime behavior, domain scope), plus the `--full` note from the quick count when it applies.
 
 Report using the triage layout of `${CLAUDE_PLUGIN_ROOT}/shared/report.md` and render it as in step 5.

@@ -1,6 +1,6 @@
 ---
 name: backend-rules
-description: Answer a backend pattern or "how should I do X" question, or check code or a plan against the rules of one to three areas (idempotency, retries/timeouts, caching, outbox, locks, transactions, auth, messaging and similar), without a report. Use for questions such as "как сделать идемпотентные вебхуки?", "is this retry loop OK", "сверься с правилами идемпотентности" or a rule ID such as IDEM-BP-13. Loads only the matching area files and offers backend-design when the question grows into a whole system. Not for designing a whole system or service with several components (backend-design) and not for reviewing a service or repository (backend-audit).
+description: Answer a backend pattern or "how should I do X" question, or check a snippet, one file or a plan against the rules of one to three areas (idempotency, retries/timeouts, caching, outbox, locks, transactions, auth, messaging and similar), without a report. Use for questions such as "как сделать идемпотентные вебхуки?", "is this retry loop OK", "сверься с правилами идемпотентности" or a rule ID such as IDEM-BP-13. Loads only the matching area files and offers backend-design when the question grows into a whole system. Not for designing a whole system or service with several components (backend-design) and not for reviewing a service or repository (backend-audit).
 argument-hint: "<area | rule ID> [question or path]"
 ---
 

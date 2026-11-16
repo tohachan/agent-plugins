@@ -100,7 +100,7 @@ def validate_design(report, require, strings, rules):
     if not isinstance(prov, dict):
         require(False, 'provenance object required'); prov = {}
     require(text(prov.get('plugin_version')), 'provenance.plugin_version required')
-    require(strings(prov.get('scope')) and set(prov['scope']) <= AREAS, 'provenance.scope must be an array of known area ids')
+    require(strings(prov.get('scope')) and bool(prov['scope']) and set(prov['scope']) <= AREAS, 'provenance.scope must be a nonempty array of known area ids')
     for banned in ('areas', 'overall', 'coverage_inventory', 'items'):
         require(banned not in report, f'design reports carry no {banned}; use assumptions, decisions, risks and validation')
     def rows(key, prefix, required):

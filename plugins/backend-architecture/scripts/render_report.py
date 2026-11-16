@@ -52,7 +52,7 @@ def header(r):
     if r['mode'] == 'design':
         return table(['Mode', 'Target', 'Areas', 'Date', 'Decisions', 'Risks'],
                      [['design', r['target'], ', '.join(r['provenance']['scope']), r['date'], len(r['decisions']), len(r.get('risks', []))]]) + validated()
-    if 'overall' not in r:
+    if 'overall' not in r or 'areas' not in r:
         result = table(['Mode', 'Target', 'Areas', 'Date', 'Findings'],
                        [[f"audit ({r['depth']})", r['target'], ', '.join(r['provenance'].get('scope') or ['all 13']), r['date'], len(r['items'])]])
         if r['provenance'].get('exclusions'): result += '\n\n**Exclusions:** ' + cell(r['provenance']['exclusions'])
