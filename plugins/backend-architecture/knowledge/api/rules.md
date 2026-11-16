@@ -74,35 +74,17 @@
 
 ## Anti-patterns
 
-`API-AP-1` — **RPC tunnelling over HTTP.**
-- Symptoms: one `POST /api` or `/rpc` endpoint with `{"action": "...", "params": {}}`; every call is POST; status always 200.
-- Why it hurts: no method semantics, no HTTP caching, no per-route limits, auth or metrics; gateways and monitors are blind.
-- Way out: if RPC is the real model, use gRPC/Connect properly with codes and deadlines; otherwise migrate actions to resources and custom methods behind a compatibility shim.
+`API-AP-1` — **RPC tunnelling over HTTP.** Symptoms: one `POST /api` or `/rpc` endpoint with `{"action": "...", "params": {}}`; every call is POST; status always 200. Why it hurts: no method semantics, no HTTP caching, no per-route limits, auth or metrics; gateways and monitors are blind. Way out: if RPC is the real model, use gRPC/Connect properly with codes and deadlines; otherwise migrate actions to resources and custom methods behind a compatibility shim.
 
-`API-AP-2` — **Table-shaped CRUD API (database as API).**
-- Symptoms: endpoints mirror tables 1:1; clients orchestrate business flows (create order → add items → set status → reserve stock) across several calls.
-- Why it hurts: invariants live in clients, partial failure leaves inconsistent state, no transaction spans the calls, schema cannot change.
-- Way out: task-oriented endpoints per business operation on aggregates (`POST /orders` with items, `POST /orders/{id}:submit`), executed in one server-side transaction or saga (IDEM).
+`API-AP-2` — **Table-shaped CRUD API (database as API).** Symptoms: endpoints mirror tables 1:1; clients orchestrate business flows (create order → add items → set status → reserve stock) across several calls. Why it hurts: invariants live in clients, partial failure leaves inconsistent state, no transaction spans the calls, schema cannot change. Way out: task-oriented endpoints per business operation on aggregates (`POST /orders` with items, `POST /orders/{id}:submit`), executed in one server-side transaction or saga (IDEM).
 
-`API-AP-3` — **Copy-paste versioning.**
-- Symptoms: `/v1`…`/v6` each with duplicated handlers and services; fixes applied to some versions only.
-- Why it hurts: maintenance multiplies, security fixes miss old copies, nobody knows who uses what.
-- Way out: one current implementation plus a thin version-transform layer at the edge (request/response migrations per version), usage telemetry, sunsets (API-BP-16).
+`API-AP-3` — **Copy-paste versioning.** Symptoms: `/v1`…`/v6` each with duplicated handlers and services; fixes applied to some versions only. Why it hurts: maintenance multiplies, security fixes miss old copies, nobody knows who uses what. Way out: one current implementation plus a thin version-transform layer at the edge (request/response migrations per version), usage telemetry, sunsets (API-BP-16).
 
-`API-AP-4` — **Smart gateway / fat BFF.**
-- Symptoms: business rules, pricing, authorization decisions or multi-service orchestration in gateway plugins or the BFF; domain teams must change the gateway to ship features.
-- Why it hurts: a shared bottleneck owned by no domain, untested logic, every team blocked on one deploy.
-- Way out: gateway keeps cross-cutting concerns only; BFF only aggregates and reshapes; move rules into owning services.
+`API-AP-4` — **Smart gateway / fat BFF.** Symptoms: business rules, pricing, authorization decisions or multi-service orchestration in gateway plugins or the BFF; domain teams must change the gateway to ship features. Why it hurts: a shared bottleneck owned by no domain, untested logic, every team blocked on one deploy. Way out: gateway keeps cross-cutting concerns only; BFF only aggregates and reshapes; move rules into owning services.
 
-`API-AP-5` — **Shared code library as the contract.**
-- Symptoms: consumers import the provider's internal Go package or npm models package to call it; contract changes require coordinated releases.
-- Why it hurts: lockstep deploys, language lock-in, transitive dependency conflicts — a distributed monolith (ARCH).
-- Way out: publish OpenAPI/proto/SDL; generate clients per consumer; version the schema, not the library.
+`API-AP-5` — **Shared code library as the contract.** Symptoms: consumers import the provider's internal Go package or npm models package to call it; contract changes require coordinated releases. Why it hurts: lockstep deploys, language lock-in, transitive dependency conflicts — a distributed monolith (ARCH). Way out: publish OpenAPI/proto/SDL; generate clients per consumer; version the schema, not the library.
 
-`API-AP-6` — **Chatty client APIs.**
-- Symptoms: one screen needs 10–50 sequential calls; N+1 across the network (`GET /orders` then `GET /orders/{id}/items` per row).
-- Why it hurts: latency multiplies on mobile networks, load multiplies on servers, partial failures are common.
-- Way out: compound documents (`?include=items`), batch reads (`GET /items?ids=…`), a BFF per client, or GraphQL with DataLoader batching.
+`API-AP-6` — **Chatty client APIs.** Symptoms: one screen needs 10–50 sequential calls; N+1 across the network (`GET /orders` then `GET /orders/{id}/items` per row). Why it hurts: latency multiplies on mobile networks, load multiplies on servers, partial failures are common. Way out: compound documents (`?include=items`), batch reads (`GET /items?ids=…`), a BFF per client, or GraphQL with DataLoader batching.
 
 ## Go / Node.js notes
 

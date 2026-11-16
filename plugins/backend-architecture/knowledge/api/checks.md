@@ -35,3 +35,4 @@ Bodies: `knowledge/api/rules.md`, looked up by ID.
 - API-AP-1 — RPC tunnelling over HTTP
 - API-AP-2 — Table-shaped CRUD API (database as API)
 - API-AP-5 — Shared code library as the contract
+- API-BP-5 — Whitelist filter and sort fields, back them with indexes, and reject unknown parameters

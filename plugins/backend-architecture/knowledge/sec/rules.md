@@ -84,45 +84,21 @@
 
 ## Anti-patterns
 
-`SEC-AP-1` — **Perimeter-only trust.**
-- Symptoms: "the gateway handles auth"; services accept any call from inside the VPC/cluster; internal endpoints without authn; identity forwarded as a plain `X-User-Id` header.
-- Why it hurts: one SSRF, compromised pod or misrouted ingress gives full access; lateral movement is free.
-- Way out: zero-trust posture: mTLS workload identity (SEC-BP-14), services verify a signed end-user/caller token and enforce authorization themselves (SEC-BP-2), NetworkPolicies default-deny.
+`SEC-AP-1` — **Perimeter-only trust.** Symptoms: "the gateway handles auth"; services accept any call from inside the VPC/cluster; internal endpoints without authn; identity forwarded as a plain `X-User-Id` header. Why it hurts: one SSRF, compromised pod or misrouted ingress gives full access; lateral movement is free. Way out: zero-trust posture: mTLS workload identity (SEC-BP-14), services verify a signed end-user/caller token and enforce authorization themselves (SEC-BP-2), NetworkPolicies default-deny.
 
-`SEC-AP-2` — **Authorization scattered as ad-hoc `if`s.**
-- Symptoms: role checks copy-pasted per handler with variations; some endpoints missing them; no list of who can do what; tests cover the happy path only.
-- Why it hurts: BOLA/BFLA gaps appear with every new endpoint; policy changes require touching dozens of files.
-- Way out: central policy module or engine (SEC-BP-2), deny-by-default middleware, a permission matrix test enumerating roles × endpoints × ownership.
+`SEC-AP-2` — **Authorization scattered as ad-hoc `if`s.** Symptoms: role checks copy-pasted per handler with variations; some endpoints missing them; no list of who can do what; tests cover the happy path only. Why it hurts: BOLA/BFLA gaps appear with every new endpoint; policy changes require touching dozens of files. Way out: central policy module or engine (SEC-BP-2), deny-by-default middleware, a permission matrix test enumerating roles × endpoints × ownership.
 
-`SEC-AP-3` — **Homegrown authentication and crypto.**
-- Symptoms: custom token formats, hand-written password reset flows, AES in ECB/CBC without MAC, self-made JWT parsing, "encryption" with static IVs.
-- Why it hurts: subtle mistakes are invisible until exploited; the team owns every future vulnerability.
-- Way out: OIDC provider (SEC-BP-4), vetted libraries (AEAD via Tink, libsodium, Go `crypto/cipher` GCM with random nonces), cloud KMS for keys.
+`SEC-AP-3` — **Homegrown authentication and crypto.** Symptoms: custom token formats, hand-written password reset flows, AES in ECB/CBC without MAC, self-made JWT parsing, "encryption" with static IVs. Why it hurts: subtle mistakes are invisible until exploited; the team owns every future vulnerability. Way out: OIDC provider (SEC-BP-4), vetted libraries (AEAD via Tink, libsodium, Go `crypto/cipher` GCM with random nonces), cloud KMS for keys.
 
-`SEC-AP-4` — **Shared god credentials.**
-- Symptoms: one DB superuser for app, migrations and humans; one IAM role or API key used by all services; admin token in a shared password manager entry; long-lived cloud access keys on laptops and CI.
-- Why it hurts: one leak compromises everything; audit trails cannot attribute actions; rotation is avoided because it breaks everything.
-- Way out: per-service identities and roles (SEC-BP-18), workload identity and OIDC federation for CI (no static keys), named human access via SSO with just-in-time elevation.
+`SEC-AP-4` — **Shared god credentials.** Symptoms: one DB superuser for app, migrations and humans; one IAM role or API key used by all services; admin token in a shared password manager entry; long-lived cloud access keys on laptops and CI. Why it hurts: one leak compromises everything; audit trails cannot attribute actions; rotation is avoided because it breaks everything. Way out: per-service identities and roles (SEC-BP-18), workload identity and OIDC federation for CI (no static keys), named human access via SSO with just-in-time elevation.
 
-`SEC-AP-5` — **JWT as an irrevocable session.**
-- Symptoms: hours- or days-long access tokens in `localStorage`; logout only deletes the client copy; permissions and PII embedded in claims and trusted until expiry.
-- Why it hurts: stolen tokens (XSS, logs, devices) cannot be revoked; role removals take effect only at expiry; PII leaks wherever the token travels.
-- Way out: server sessions or BFF for browsers, short access tokens with rotating refresh (SEC-BP-6), minimal claims with permissions resolved server-side.
+`SEC-AP-5` — **JWT as an irrevocable session.** Symptoms: hours- or days-long access tokens in `localStorage`; logout only deletes the client copy; permissions and PII embedded in claims and trusted until expiry. Why it hurts: stolen tokens (XSS, logs, devices) cannot be revoked; role removals take effect only at expiry; PII leaks wherever the token travels. Way out: server sessions or BFF for browsers, short access tokens with rotating refresh (SEC-BP-6), minimal claims with permissions resolved server-side.
 
-`SEC-AP-6` — **Tenant isolation by convention.**
-- Symptoms: every query must "remember" `AND tenant_id = ?`; raw SQL and reports skip it; background jobs run without tenant context; caches keyed without tenant.
-- Why it hurts: one forgotten clause is a cross-tenant breach, often Critical and reportable.
-- Way out: tenant-scoped repositories that cannot be constructed without a tenant, RLS as a backstop (SEC-BP-3), tenant-prefixed cache keys, cross-tenant access tests.
+`SEC-AP-6` — **Tenant isolation by convention.** Symptoms: every query must "remember" `AND tenant_id = ?`; raw SQL and reports skip it; background jobs run without tenant context; caches keyed without tenant. Why it hurts: one forgotten clause is a cross-tenant breach, often Critical and reportable. Way out: tenant-scoped repositories that cannot be constructed without a tenant, RLS as a backstop (SEC-BP-3), tenant-prefixed cache keys, cross-tenant access tests.
 
-`SEC-AP-7` — **Logs and analytics as an ungoverned PII lake.**
-- Symptoms: request/response bodies logged "for debugging"; production DB dumps in staging and analytics; no retention or access controls on log stores.
-- Why it hurts: breach surface and regulatory exposure (GDPR, HIPAA) far beyond the primary database, usually with weaker access control.
-- Way out: redaction at source (SEC-BP-16), data classification and retention for every store (SEC-BP-19), synthetic or pseudonymised non-production data.
+`SEC-AP-7` — **Logs and analytics as an ungoverned PII lake.** Symptoms: request/response bodies logged "for debugging"; production DB dumps in staging and analytics; no retention or access controls on log stores. Why it hurts: breach surface and regulatory exposure (GDPR, HIPAA) far beyond the primary database, usually with weaker access control. Way out: redaction at source (SEC-BP-16), data classification and retention for every store (SEC-BP-19), synthetic or pseudonymised non-production data.
 
-`SEC-AP-8` — **Cross-cutting rule re-implemented per module.**
-- Symptoms: the same guard (`if target == caller`, "not own record", "distinct approver", "only in state X") is hand-written in some handlers or services but absent in others that reach the same state; bulk, import, batch, CLI or job paths bypass the per-endpoint check; a new module copies an older one without the guard.
-- Why it hurts: the strongest-looking modules hide the hole in the weakest, and a reviewer who samples one path sees the guard and records a strength.
-- Way out: one declaration evaluated centrally (SEC-BP-21); enumerate every writer of the guarded state (SEC-CHK-22); a matrix test over the whole registry.
+`SEC-AP-8` — **Cross-cutting rule re-implemented per module.** Symptoms: the same guard (`if target == caller`, "not own record", "distinct approver", "only in state X") is hand-written in some handlers or services but absent in others that reach the same state; bulk, import, batch, CLI or job paths bypass the per-endpoint check; a new module copies an older one without the guard. Why it hurts: the strongest-looking modules hide the hole in the weakest, and a reviewer who samples one path sees the guard and records a strength. Way out: one declaration evaluated centrally (SEC-BP-21); enumerate every writer of the guarded state (SEC-CHK-22); a matrix test over the whole registry.
 
 ## Go / Node.js notes
 

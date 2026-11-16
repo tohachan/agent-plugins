@@ -6,7 +6,7 @@ Each area is a directory named by its lowercase rule prefix (`IDEM-BP-13` → `k
 | --- | --- | --- |
 | `decisions.md` | Scope, hand-offs, **Key decisions** table | designing, choosing between options |
 | `checks.md` | Scope, **Audit checklist** (`XX-CHK-n`) with evidence/search hints and default severity; index of rules the checklist does not cite | auditing, verifying code against the area |
-| `rules.md` | **Best practices** (`XX-BP-n`), **Bad practices** (`XX-BAD-n`, local mistakes), **Anti-patterns** (`XX-AP-n`, structural), Go/Node.js notes | rule bodies — Grep one ID (`` ^`XX-BP-n` ``, `-A 3` for anti-patterns); read whole only for a single-area lookup |
+| `rules.md` | **Best practices** (`XX-BP-n`), **Bad practices** (`XX-BAD-n`, local mistakes), **Anti-patterns** (`XX-AP-n`, structural), Go/Node.js notes | rule bodies — Grep one ID (`` ^`XX-BP-n` ``; BP, BAD and AP bodies are one line each), a check as `` ^\| XX-CHK-n \| ``; read whole only for a single-area lookup |
 
 Rule IDs are stable; findings, decisions and risks cite them. `../shared/method.md` governs applicability and evidence: a checklist "Fail" is a hypothesis until those conditions hold. `sources.md` separates verified vendor facts from lookup starting points.
 

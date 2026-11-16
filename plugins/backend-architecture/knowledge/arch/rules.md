@@ -12,7 +12,7 @@
 
 `ARCH-BP-4` — **Exactly one owner writes each piece of data; others read via API or events.** Shared write access makes schema changes a cross-team negotiation and invariants unenforceable. How: per-service schema and DB credentials (no grants on other schemas); other contexts get data via queries to the owner, subscribed events into local read models, or CDC from the owner's outbox (→ IDEM, MSG).
 
-`ARCH-BP-5` — **Choose transaction boundaries from invariants and ownership.** Aggregates help model consistency, but multiple aggregates in one database may legitimately share an atomic transaction. Do not replace a simple local transaction with eventual consistency to satisfy a modeling rule. When independent stores/owners require distribution, explicitly accept loss of isolation and design recovery (IDEM-BP-10/11). Revisit oversized transactions based on contention and change coupling.
+`ARCH-BP-5` — **Choose transaction boundaries from invariants and ownership.** Aggregates help model consistency, but multiple aggregates in one database may legitimately share an atomic transaction. Do not replace a simple local transaction with eventual consistency to satisfy a modeling rule. When independent stores/owners require distribution, explicitly accept loss of isolation and design recovery (IDEM-BP-10, IDEM-BP-11). Revisit oversized transactions based on contention and change coupling.
 
 `ARCH-BP-6` — **Choose sync versus async from latency, availability and consistency needs.** Keep required immediate answers synchronous when their measured budgets fit. Propagate facts asynchronously when decoupling is valuable and lag/recovery are acceptable; use IDEM-BP-8 for durable publication. Hop count is a lead, not a defect or universal cutoff.
 

@@ -28,7 +28,7 @@
 
 `CONC-BP-12` — **Treat a distributed lock as a lease and protect the resource with a fencing token.** Why: a holder paused by GC, a stalled VM or a partition keeps acting after its lease expired and another holder took over. How: lock service issues a monotonically increasing token (etcd revision, ZooKeeper zxid, DB sequence); every write to the protected resource carries it and the resource rejects tokens lower than the highest seen (`WHERE fence_token < $new`). TTL ≥ 3× renewal interval; renew at TTL/3; abort work when renewal fails.
 
-`CONC-BP-13` — **Use Redis locks only for efficiency (avoiding duplicate work), never for correctness.** Why: Redis replication is async and Redlock depends on bounded clock drift and pauses; neither is guaranteed. How: `SET key token NX PX ttl` (single atomic call) and release with a compare-and-delete Lua script; when a double execution would corrupt data, use DB constraints/fencing (BP-8, BP-12).
+`CONC-BP-13` — **Use Redis locks only for efficiency (avoiding duplicate work), never for correctness.** Why: Redis replication is async and Redlock depends on bounded clock drift and pauses; neither is guaranteed. How: `SET key token NX PX ttl` (single atomic call) and release with a compare-and-delete Lua script; when a double execution would corrupt data, use DB constraints/fencing (CONC-BP-8, CONC-BP-12).
 
 `CONC-BP-14` — **Use transaction-scoped Postgres advisory locks.** Why: session locks (`pg_advisory_lock`) leak to the wrong client behind PgBouncer in transaction mode and survive panics on pooled connections. How: `pg_advisory_xact_lock(hashtext('tenant:'||$1))` inside the transaction that does the work; `pg_try_advisory_xact_lock` for "skip if busy" singletons.
 

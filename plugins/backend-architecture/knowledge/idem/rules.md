@@ -38,7 +38,7 @@
 
 `IDEM-BP-17` — **Use an immutable ledger when this system owns balances requiring reconstruction.** Double-entry entries, reversals and reconciliation support financial accounting; enforce balanced postings and update any balance projection atomically. Store exact amounts and currency (integer minor units or decimal), never binary float arithmetic for monetary calculations. Product prices and provider-owned payment statuses do not alone require an internal double-entry ledger.
 
-`IDEM-BP-18` — **Treat "exactly-once" as effectively-once: at-least-once delivery + idempotent effect.** Why: no network protocol delivers exactly once to an external side effect; vendor "exactly-once" (Kafka EOS) only covers read-process-write within that broker. How: design every effect for duplicates (IDEM-BP-6/7); use Kafka transactions only for Kafka→Kafka pipelines and still dedup at sinks that are DBs or APIs.
+`IDEM-BP-18` — **Treat "exactly-once" as effectively-once: at-least-once delivery + idempotent effect.** Why: no network protocol delivers exactly once to an external side effect; vendor "exactly-once" (Kafka EOS) only covers read-process-write within that broker. How: design every effect for duplicates (IDEM-BP-6, IDEM-BP-7); use Kafka transactions only for Kafka→Kafka pipelines and still dedup at sinks that are DBs or APIs.
 
 `IDEM-BP-19` — **Carry causality metadata on events.** Why: debugging and correct ordering across services need to know what caused what. How: `event_id`, `causation_id` (the event/command that triggered it), `correlation_id` (the whole flow), `occurred_at`, aggregate `version`; use versions or vector-like per-source sequences for ordering, not wall-clock timestamps from different hosts. Trace propagation → OBS.
 
@@ -50,7 +50,7 @@
 
 `IDEM-BAD-1` — **Idempotency check as `SELECT` then `INSERT` without a unique constraint.** Concurrent duplicates both pass the check. → Instead: unique key + `ON CONFLICT` (IDEM-BP-4, IDEM-BP-6).
 
-`IDEM-BAD-2` — **Committing a completed local dedup marker separately from its local effect.** A crash can leave an effect without its marker or a marker without its effect. Commit them together (IDEM-BP-2/7). A persisted external-operation intent is deliberately separate and must remain pending/unknown until recovery establishes its result (IDEM-BP-13); do not mistake that intent for proof of completion.
+`IDEM-BAD-2` — **Committing a completed local dedup marker separately from its local effect.** A crash can leave an effect without its marker or a marker without its effect. Commit them together (IDEM-BP-2, IDEM-BP-7). A persisted external-operation intent is deliberately separate and must remain pending/unknown until recovery establishes its result (IDEM-BP-13); do not mistake that intent for proof of completion.
 
 `IDEM-BAD-3` — **Treating 5xx/timeouts as proof that a key can be released.** An effect or commit may have succeeded despite the error. Apply the three-outcome protocol in IDEM-BP-13. Release/re-execute only after proving no effect and no active attempt; preserve unknown operations for recovery. Error replay is API-specific: Stripe v1 saves executed 500 responses; v2 differs (sources.md).
 
@@ -82,7 +82,7 @@
 
 ## Anti-patterns
 
-`IDEM-AP-1` — **Dual write.** Symptoms: `db.Commit()` followed by `producer.Send()`/`cache.Set()`/`search.Index()`/`http.Post()` in the same handler; "sometimes the event is missing" or "the index has orders that don't exist". Why it hurts: there is no atomicity across two systems; every crash, timeout or deploy between the writes creates permanent divergence. Way out: outbox or CDC for everything downstream of the DB (IDEM-BP-8/9); reconciliation to repair existing drift.
+`IDEM-AP-1` — **Dual write.** Symptoms: `db.Commit()` followed by `producer.Send()`/`cache.Set()`/`search.Index()`/`http.Post()` in the same handler; "sometimes the event is missing" or "the index has orders that don't exist". Why it hurts: there is no atomicity across two systems; every crash, timeout or deploy between the writes creates permanent divergence. Way out: outbox or CDC for everything downstream of the DB (IDEM-BP-8, IDEM-BP-9); reconciliation to repair existing drift.
 
 `IDEM-AP-2` — **Distributed transaction via 2PC/XA across services or heterogeneous stores.** Symptoms: XA data sources, `PREPARE TRANSACTION` orchestration in app code, a "transaction coordinator" service. Why it hurts: participants hold locks while waiting for the coordinator; a coordinator crash blocks them indefinitely; most brokers and SaaS APIs cannot participate; availability becomes the product of all participants'. Way out: redraw boundaries so one service owns the invariant; otherwise saga + outbox (IDEM-BP-10).
 
@@ -92,9 +92,9 @@
 
 `IDEM-AP-5` — **Saga without isolation countermeasures.** Symptoms: steps commit final-looking states immediately; other flows act on them (ship before payment confirmed, sell reserved stock). Why it hurts: compensation arrives after others acted on intermediate data — anomalies that cannot be undone. Way out: semantic locks, pending states, pivot step ordering (IDEM-BP-11).
 
-`IDEM-AP-6` — **Idempotency middleware that caches responses in memory/Redis around a non-transactional handler.** Symptoms: generic middleware keyed on header, stores response after handler returns, no in-progress state, no fingerprint. Why it hurts: concurrent duplicates execute twice; crash after effect loses the record; different payloads with same key return wrong data. Way out: key insert as first step of the handler's DB transaction with in-progress/fingerprint handling (IDEM-BP-2/3/4).
+`IDEM-AP-6` — **Idempotency middleware that caches responses in memory/Redis around a non-transactional handler.** Symptoms: generic middleware keyed on header, stores response after handler returns, no in-progress state, no fingerprint. Why it hurts: concurrent duplicates execute twice; crash after effect loses the record; different payloads with same key return wrong data. Way out: key insert as first step of the handler's DB transaction with in-progress/fingerprint handling (IDEM-BP-2, IDEM-BP-3, IDEM-BP-4).
 
-`IDEM-AP-7` — **Mutable balance as source of truth.** Symptoms: `accounts.balance` updated by many code paths; no entries table, or an "audit log" written separately; support fixes balances with SQL. Why it hurts: no way to prove or rebuild the number; races and retries corrupt it silently. Way out: introduce a ledger, backfill opening-balance entries, make balance a projection, reconcile (IDEM-BP-16/17).
+`IDEM-AP-7` — **Mutable balance as source of truth.** Symptoms: `accounts.balance` updated by many code paths; no entries table, or an "audit log" written separately; support fixes balances with SQL. Why it hurts: no way to prove or rebuild the number; races and retries corrupt it silently. Way out: introduce a ledger, backfill opening-balance entries, make balance a projection, reconcile (IDEM-BP-16, IDEM-BP-17).
 
 `IDEM-AP-8` — **Eventual consistency everywhere, by accident.** Symptoms: reads served from replicas, caches and search indexes with no documented staleness bound; users re-submit forms because they don't see their changes; business checks run against projections. Why it hurts: duplicates and wrong decisions that look like random bugs. Way out: classify reads by required guarantee and route accordingly (IDEM-BP-14).
 
