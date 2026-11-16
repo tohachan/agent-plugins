@@ -25,6 +25,7 @@ Graders judge substance: the correct decision, the trade-off, the failure scenar
 | backend-audit | technical-audit-default | `--full`. Domain review excluded by default, including delegated scope; seeded authorization finding kept | off (default) | yes |
 | backend-audit | technical-audit-explicit-off | The same boundary in a focused SEC `--full` audit with `--domain off` | off | no |
 | backend-audit | triage-routing | "Look at my service" routes to the triage audit, not the full protocol | off | no |
+| backend-audit | focused-routing | A request to check one area of concrete code ("only retries and timeouts in the payment client") routes to backend-audit as a focused triage, not to backend-rules or an inline answer | off | no |
 | backend-design | idempotent-payment-webhooks | A pattern question normally routes to backend-rules; here backend-design is invoked explicitly, so this tests the focused design form (decision with a rejected alternative, assumptions, Go sketch, residual risks, verification) | off | no |
 | backend-design | notification-service-design | Full design: provider limits, estimates, decisions, risks, verification | off | no |
 | backend-design | ordered-outbox-deltas | Ordered deltas through an outbox; crash and concurrent-relay scenarios | off | no |

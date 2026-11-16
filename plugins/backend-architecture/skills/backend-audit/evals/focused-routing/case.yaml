@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: focused-routing
+expected_outcome: |
+  A request to check one area of concrete code on disk ("only retries and timeouts in the payment client") is routed to backend-audit as a focused triage limited to that area, not answered inline and not through backend-rules.
+context:
+  scaffold_script: place-files.sh
